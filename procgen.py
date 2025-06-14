@@ -92,10 +92,14 @@ def generate_dungeon(
             dungeon.entities.append(MangledKobold(px + 1, py))
         else:  # All rooms after the first.
             # Dig out a tunnel between this room and the previous one.
+            ex, ey = new_room.center
+            ex += random.randint(-1, 1)
+            ey += random.randint(-1, 1)
+            dungeon.entities.append(Kobold(ex, ey))
             for x, y in tunnel_between(rooms[-1].center, new_room.center):
                 dungeon.buffer._buf[y * dungeon.width + x] = ('.', 0)
 
         # Finally, append the new room to the list.
         rooms.append(new_room)
 
-    return dungeon, Entity(px, py, "You", "Yourself.", '@', 'yellow', True, 15, 15)
+    return dungeon, Player(px, py)

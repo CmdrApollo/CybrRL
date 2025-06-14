@@ -10,7 +10,9 @@ from data import Buffer, Level
 
 import numpy as np
 
-GAMENAME = "Ethereal Collapse"
+import random
+
+GAMENAME = "Aether Collapse"
 
 end_text = "[ENTER] to continue"
 
@@ -82,8 +84,8 @@ def main(stdscr):
 
     screen = Buffer(width, height)
 
-    messages = []
-    message_colors = []
+    messages = [f"Welcome to {GAMENAME}!"]
+    message_colors = [Colors.YELLOW]
 
     def add_message(text, color='white'):
         messages.append(": " + text)
@@ -94,7 +96,45 @@ def main(stdscr):
             message_colors.pop(0)
 
     def main_menu():
-        return True
+        choice = 0
+
+        while True:
+            stdscr.clear()
+            screen.clear()
+
+            stdscr.subwin(height + 2, width + 2, 0, 0).box()
+            stdscr.addstr(0, 1, GAMENAME)
+
+            t = "\n".join([
+                "   ***********************************   ",
+                " *************************************** ",
+                "*****        Aether Collapse        *****",
+                " *************************************** ",
+                "   ***********************************   ",
+            ])
+            tx, ty = width // 2 - len(t.splitlines()[0]) // 2, height // 4 - len(t.splitlines()) // 2
+            screen.set_text(tx, ty, t, Colors.WHITE)
+
+            ptext = "> Play" if choice == 0 else "  Play"
+            screen.set_text(width // 2 - len(ptext) // 2, height // 2, ptext, Colors.WHITE)
+            ptext = "> Quit" if choice == 1 else "  Quit"
+            screen.set_text(width // 2 - len(ptext) // 2, height // 2 + 1, ptext, Colors.WHITE)
+
+            screen.put(stdscr, 1, 1, Colors)
+
+            stdscr.refresh()
+
+            # Get user input
+            key = stdscr.getch()
+            
+            if key == ord('\n'):
+                match choice:
+                    case 0:
+                        return True
+                    case 1:
+                        return False
+            elif key == curses.KEY_UP or key == curses.KEY_DOWN:
+                choice = 1 - choice
 
     def main_game():
         game_screen = Buffer(gameplay_width - 2, gameplay_height - 2)
@@ -214,7 +254,7 @@ def main(stdscr):
                     break
 
                 if not solids[player.y, player.x]:
-                    for entity in level.entities:
+                    for entity in level.entities[::-1]:
                         if entity.x == player.x and entity.y == player.y:
                             interaction_type, interaction_data = entity.interact()
 
@@ -229,6 +269,13 @@ def main(stdscr):
                                     title = entity.name
                                     contents = interaction_data
                                     add_message(f"You speak to the {entity.name}.")
+                                case "attack":
+                                    entity.health = max(0, entity.health - (player.strength + random.randint(-1, 1)))
+                                    if entity.health == 0:
+                                        level.entities.remove(entity)
+                                        add_message(F"You attack the {entity.name}, killing it!")
+                                    else:
+                                        add_message(F"You attack the {entity.name}.")
                     player.x, player.y = ox, oy
 
             cam_x = player.x - gameplay_width // 2

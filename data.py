@@ -121,6 +121,11 @@ class Entity:
         # description
         return ("description", None)
 
+class Player(Entity):
+    def __init__(self, x, y):
+        super().__init__(x, y, "You", "Yourself.", '@', 'yellow', health=15, max_health=15)
+        self.strength = 3
+
 class NPC(Entity):
     def __init__(self, x, y, name, description, dialogue, char, color):
         super().__init__(x, y, name, description, char, color)
@@ -139,8 +144,7 @@ class Enemy(Entity):
         self.damage = damage
     
     def interact(self):
-        x = self.damage + random.randint(-1, 1)
-        return ("attack", f"{self.name} attacks you for {x} damage!")
+        return ("attack", None)
     
 class Kobold(Enemy):
     def __init__(self, x, y):
