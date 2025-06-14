@@ -39,7 +39,7 @@ class Buffer:
         for i in range(w):
             for j in range(h):
                 if (i, j) in [(0, 0), (w - 1, 0), (w - 1, h - 1), (0, h - 1)]:
-                    self.set_at(x + i, y + j, '+', color)
+                    self.set_at(x + i, y + j, '*', color)
                 elif i == 0 or i == w - 1:
                     self.set_at(x + i, y + j, '|', color)
                 elif j == 0 or j == h - 1:
@@ -123,12 +123,12 @@ class Entity:
 
 class Player(Entity):
     def __init__(self, x, y):
-        super().__init__(x, y, "You", "Yourself.", '@', 'yellow', health=15, max_health=15)
-        self.strength = 3
+        super().__init__(x, y, "You", "Yourself.", '@', 'yellow', health=10, max_health=10)
+        self.strength = 2
 
 class NPC(Entity):
     def __init__(self, x, y, name, description, dialogue, char, color):
-        super().__init__(x, y, name, description, char, color)
+        super().__init__(x, y, name, description, char, color, health=5, max_health=5)
         self.dialogue = dialogue
     
     def interact(self):
@@ -140,12 +140,24 @@ class MangledKobold(NPC):
 
 class Enemy(Entity):
     def __init__(self, x, y, name, description, health, damage, char, color):
-        super().__init__(x, y, name, description, char, color, health, health)
+        super().__init__(x, y, name, description, char, color, True, health, health)
         self.damage = damage
     
     def interact(self):
         return ("attack", None)
     
+class HumanoidEnemy(Enemy):
+    def __init__(self, x, y, name, description, health, damage, color):
+        super().__init__(x, y, name, description, health, damage, '@', color)
+    
+class Goblin(HumanoidEnemy):
+    def __init__(self, x, y):
+        super().__init__(x, y, "Goblin", "A medium-sized, green, humanoid creature. Generally known for their hostility and shady business tactics.", 6, 2, 'green')
+        
 class Kobold(Enemy):
     def __init__(self, x, y):
-        super().__init__(x, y, "Kobold", "This small, draconic creature bears striking resemblence to the dragons of the days of yore. Or so you've been told.", 10, 3, 'k', 'red')
+        super().__init__(x, y, "Kobold", "This small, draconic creature bears striking resemblence to the dragons of the days of yore. Or so you've been told.", 5, 2, 'k', 'red')
+    
+class Bat(Enemy):
+    def __init__(self, x, y):
+        super().__init__(x, y, "Bat", "This blood-sucking creature flies silently throughout the dungeon, awaiting its next victim.", 4, 1, 'b', 'magenta')

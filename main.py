@@ -19,7 +19,7 @@ end_text = "[ENTER] to continue"
 BIG_WINDOW = None
 
 while True:
-    i = input("Big or Small Terminal (0=Big, 1=Small)? ").lower().strip()
+    i = input("Big or Small Terminal (0=Big, 1=Small [Recommended])? ").lower().strip()
     if i == '0':
         BIG_WINDOW = True
         break
@@ -32,14 +32,14 @@ class GameScene:
     PLAYING = 1
 
 def main(stdscr):
-    level_size = (100, 50)
+    level_size = (50, 50)
 
     if BIG_WINDOW:
-        width, height = 120, 35
-        gameplay_width, gameplay_height = 80, 25
+        width, height = 120, 40
+        gameplay_width, gameplay_height = 90, 30
     else:
-        width, height = 80, 25
-        gameplay_width, gameplay_height = 60, 18
+        width, height = 80, 30
+        gameplay_width, gameplay_height = 60, 22
 
     curses.start_color()
 
@@ -49,11 +49,11 @@ def main(stdscr):
     stdscr.keypad(True)  # Enable arrow keys
     stdscr.resize(height + 2, width + 2)
 
-    curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
-    curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
-    curses.init_pair(3, curses.COLOR_BLUE, curses.COLOR_BLACK)
-    curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK)
-    curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK)
+    curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK    )
+    curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK  )
+    curses.init_pair(3, curses.COLOR_BLUE, curses.COLOR_BLACK   )
+    curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK )
+    curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK   )
     curses.init_pair(6, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
 
     class Colors:
@@ -169,6 +169,8 @@ def main(stdscr):
 
         show_text = False
 
+        menu = False
+
         title = ""
         contents = ""
 
@@ -191,13 +193,13 @@ def main(stdscr):
             stdscr.addstr(0, 1, GAMENAME)
 
             screen.set_rect(0, 0, gameplay_width, gameplay_height, Colors.WHITE)
-            screen.set_text(1, 0, "Game", Colors.WHITE)
+            screen.set_text(2, 0, "Game", Colors.WHITE)
             screen.set_rect(gameplay_width, 0, width - gameplay_width, gameplay_height, Colors.WHITE)
-            screen.set_text(gameplay_width + 1, 0, "Stats", Colors.WHITE)
+            screen.set_text(gameplay_width + 2, 0, "Stats", Colors.WHITE)
             screen.set_text(gameplay_width + 1, 1, f"HP: {player.health}/{player.max_health}", Colors.WHITE)
 
             screen.set_rect(0, gameplay_height, gameplay_width, height - gameplay_height, Colors.WHITE)
-            screen.set_text(1, gameplay_height, "Messages", Colors.WHITE)
+            screen.set_text(2, gameplay_height, "Messages", Colors.WHITE)
             y = 0
             for i, msg in enumerate(messages[::-1]):
                 s = split_up(msg, game_screen.width)
@@ -205,15 +207,16 @@ def main(stdscr):
                 y += len(s.splitlines())
 
             screen.set_rect(gameplay_width, gameplay_height, width - gameplay_width, height - gameplay_height, Colors.WHITE)
-            screen.set_text(gameplay_width + 1, gameplay_height, "???", Colors.WHITE)
+            screen.set_text(gameplay_width + 2, gameplay_height, "???", Colors.WHITE)
 
-            game_screen.blit_level(active_visibility, level, -cam_x, -cam_y, Colors.BLUE)
+            if not menu:
+                game_screen.blit_level(active_visibility, level, -cam_x, -cam_y, Colors.BLUE)
 
-            for entity in level.entities:
-                if active_visibility[entity.y * level.width + entity.x]:
-                    game_screen.set_at(entity.x - cam_x, entity.y - cam_y, entity.char, entity.color)
+                for entity in level.entities:
+                    if active_visibility[entity.y * level.width + entity.x]:
+                        game_screen.set_at(entity.x - cam_x, entity.y - cam_y, entity.char, entity.color)
 
-            game_screen.set_at(player.x - cam_x, player.y - cam_y, '@', Colors.YELLOW)
+                game_screen.set_at(player.x - cam_x, player.y - cam_y, '@', Colors.YELLOW)
             
             if show_text:
                 text_box(0, 0, game_screen.width, game_screen.height, title, contents, game_screen)
@@ -227,56 +230,60 @@ def main(stdscr):
             # Get user input
             key = stdscr.getch()
 
-            if show_text:
-                if key == ord('\n'):
-                    show_text = False
+            if menu:
+                pass
             else:
-                ox, oy = player.x, player.y
+                if show_text:
+                    if key == ord('\n'):
+                        show_text = False
+                else:
+                    ox, oy = player.x, player.y
 
-                if key == curses.KEY_UP:
-                    player.y = max(0, player.y - 1)
-                elif key == curses.KEY_DOWN:
-                    player.y = min(level_size[1] - 1, player.y + 1)
-                elif key == curses.KEY_LEFT:
-                    player.x = max(0, player.x - 1)
-                elif key == curses.KEY_RIGHT:
-                    player.x = min(level_size[0] - 1, player.x + 1)
-                elif key == ord('l'):
-                    for n in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
-                        for entity in level.entities:
-                            if entity.x == player.x + n[0] and entity.y == player.y + n[1]:
-                                show_text = True
-                                title = entity.name
-                                contents = entity.description
-                                add_message(f"You examine the {entity.name}.")
-                                break
-                elif key == 27:
-                    break
-
-                if not solids[player.y, player.x]:
-                    for entity in level.entities[::-1]:
-                        if entity.x == player.x and entity.y == player.y:
-                            interaction_type, interaction_data = entity.interact()
-
-                            match interaction_type:
-                                case "description":
+                    if key == curses.KEY_UP:
+                        player.y = max(0, player.y - 1)
+                    elif key == curses.KEY_DOWN:
+                        player.y = min(level_size[1] - 1, player.y + 1)
+                    elif key == curses.KEY_LEFT:
+                        player.x = max(0, player.x - 1)
+                    elif key == curses.KEY_RIGHT:
+                        player.x = min(level_size[0] - 1, player.x + 1)
+                    elif key == ord('l'):
+                        for n in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+                            for entity in level.entities:
+                                if entity.x == player.x + n[0] and entity.y == player.y + n[1]:
                                     show_text = True
                                     title = entity.name
-                                    contents = entity.description
+                                    contents = entity.description + f" The {entity.name} has {entity.health}/{entity.max_health} HP."
                                     add_message(f"You examine the {entity.name}.")
-                                case "dialogue":
-                                    show_text = True
-                                    title = entity.name
-                                    contents = interaction_data
-                                    add_message(f"You speak to the {entity.name}.")
-                                case "attack":
-                                    entity.health = max(0, entity.health - (player.strength + random.randint(-1, 1)))
-                                    if entity.health == 0:
-                                        level.entities.remove(entity)
-                                        add_message(F"You attack the {entity.name}, killing it!")
-                                    else:
-                                        add_message(F"You attack the {entity.name}.")
-                    player.x, player.y = ox, oy
+                                    break
+                    
+                    if not solids[player.y, player.x]:
+                        for entity in level.entities[::-1]:
+                            if entity.x == player.x and entity.y == player.y:
+                                interaction_type, interaction_data = entity.interact()
+
+                                match interaction_type:
+                                    case "description":
+                                        show_text = True
+                                        title = entity.name
+                                        contents = entity.description + f" The {entity.name} has {entity.health}/{entity.max_health} HP."
+                                        add_message(f"You examine the {entity.name}.")
+                                    case "dialogue":
+                                        show_text = True
+                                        title = entity.name
+                                        contents = interaction_data
+                                        add_message(f"You speak to the {entity.name}.")
+                                    case "attack":
+                                        entity.health = max(0, entity.health - (player.strength + random.randint(-1, 1)))
+                                        if entity.health == 0:
+                                            level.entities.remove(entity)
+                                            add_message(F"You attack the {entity.name}, killing it!")
+                                        else:
+                                            add_message(F"You attack the {entity.name}.")
+                        player.x, player.y = ox, oy
+
+            if key == 27:
+                menu = not menu
 
             cam_x = player.x - gameplay_width // 2
             cam_y = player.y - gameplay_height // 2
