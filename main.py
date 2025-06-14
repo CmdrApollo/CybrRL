@@ -14,14 +14,28 @@ GAMENAME = "Ethereal Collapse"
 
 end_text = "[ENTER] to continue"
 
+BIG_WINDOW = None
+
+while True:
+    i = input("Big or Small Terminal (0=Big, 1=Small)? ").lower().strip()
+    if i == '0':
+        BIG_WINDOW = True
+        break
+    elif i == '1':
+        BIG_WINDOW = False
+        break
+
 class GameScene:
     MAIN_MENU = 0
     PLAYING = 1
 
 def main(stdscr):
-    width, height = 80, 25
-
-    gameplay_width, gameplay_height = 60, 18
+    if BIG_WINDOW:
+        width, height = 120, 35
+        gameplay_width, gameplay_height = 80, 25
+    else:
+        width, height = 80, 25
+        gameplay_width, gameplay_height = 60, 18
 
     curses.start_color()
 
