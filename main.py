@@ -30,6 +30,8 @@ class GameScene:
     PLAYING = 1
 
 def main(stdscr):
+    level_size = (100, 50)
+
     if BIG_WINDOW:
         width, height = 120, 35
         gameplay_width, gameplay_height = 80, 25
@@ -98,7 +100,7 @@ def main(stdscr):
         game_screen = Buffer(gameplay_width - 2, gameplay_height - 2)
 
         level, player = generate_dungeon(
-            15, 4, 6, width, height
+            15, 4, 6, *level_size
         )
 
         level.wallify(Colors.WHITE)
