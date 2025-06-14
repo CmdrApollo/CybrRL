@@ -196,11 +196,11 @@ def main(stdscr):
                 if key == curses.KEY_UP:
                     player.y = max(0, player.y - 1)
                 elif key == curses.KEY_DOWN:
-                    player.y = min(height - 1, player.y + 1)
+                    player.y = min(level_size[1] - 1, player.y + 1)
                 elif key == curses.KEY_LEFT:
                     player.x = max(0, player.x - 1)
                 elif key == curses.KEY_RIGHT:
-                    player.x = min(width - 1, player.x + 1)
+                    player.x = min(level_size[0] - 1, player.x + 1)
                 elif key == ord('l'):
                     for n in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
                         for entity in level.entities:
