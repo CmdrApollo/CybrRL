@@ -98,4 +98,4 @@ def generate_dungeon(
         # Finally, append the new room to the list.
         rooms.append(new_room)
 
-    return dungeon, px, py
+    return dungeon, Entity(px, py, "You", "Yourself.", '@', 'yellow', True, 15, 15)

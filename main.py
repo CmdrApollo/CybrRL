@@ -80,13 +80,24 @@ def main(stdscr):
 
     screen = Buffer(width, height)
 
+    messages = []
+    message_colors = []
+
+    def add_message(text, color='white'):
+        messages.append(": " + text)
+        message_colors.append(color)
+
+        while len(messages) > height - gameplay_height - 2:
+            messages.pop(0)
+            message_colors.pop(0)
+
     def main_menu():
         return True
 
     def main_game():
         game_screen = Buffer(gameplay_width - 2, gameplay_height - 2)
 
-        level, x, y = generate_dungeon(
+        level, player = generate_dungeon(
             15, 4, 6, width, height
         )
 
@@ -111,8 +122,8 @@ def main(stdscr):
                     if level.buffer.get(x, y)[0] == '#' or any([e.solid and e.x == x and e.y == y for e in level.entities]):
                         solids[y, x] = 0
 
-        cam_x = x - gameplay_width // 2
-        cam_y = y - gameplay_height // 2
+        cam_x = player.x - gameplay_width // 2
+        cam_y = player.y - gameplay_height // 2
 
         show_text = False
 
@@ -121,7 +132,7 @@ def main(stdscr):
 
         while True:
             generate_solids()
-            fov = tcod.map.compute_fov(solids, (y, x), 4, algorithm=tcod.constants.FOV_DIAMOND)
+            fov = tcod.map.compute_fov(solids, (player.y, player.x), 4, algorithm=tcod.constants.FOV_DIAMOND)
             for j in range(level.height):
                 for i in range(level.width):
                     if fov[j, i]:
@@ -140,9 +151,17 @@ def main(stdscr):
             screen.set_rect(0, 0, gameplay_width, gameplay_height, Colors.WHITE)
             screen.set_text(1, 0, "Game", Colors.WHITE)
             screen.set_rect(gameplay_width, 0, width - gameplay_width, gameplay_height, Colors.WHITE)
-            screen.set_text(gameplay_width + 1, 0, "Inventory", Colors.WHITE)
+            screen.set_text(gameplay_width + 1, 0, "Stats", Colors.WHITE)
+            screen.set_text(gameplay_width + 1, 1, f"HP: {player.health}/{player.max_health}", Colors.WHITE)
+
             screen.set_rect(0, gameplay_height, gameplay_width, height - gameplay_height, Colors.WHITE)
             screen.set_text(1, gameplay_height, "Messages", Colors.WHITE)
+            y = 0
+            for i, msg in enumerate(messages[::-1]):
+                s = split_up(msg, game_screen.width)
+                screen.set_text(1, height - 2 - y, s, message_colors[::-1][i])
+                y += len(s.splitlines())
+
             screen.set_rect(gameplay_width, gameplay_height, width - gameplay_width, height - gameplay_height, Colors.WHITE)
             screen.set_text(gameplay_width + 1, gameplay_height, "???", Colors.WHITE)
 
@@ -152,7 +171,7 @@ def main(stdscr):
                 if active_visibility[entity.y * level.width + entity.x]:
                     game_screen.set_at(entity.x - cam_x, entity.y - cam_y, entity.char, entity.color)
 
-            game_screen.set_at(x - cam_x, y - cam_y, '@', Colors.YELLOW)
+            game_screen.set_at(player.x - cam_x, player.y - cam_y, '@', Colors.YELLOW)
             
             if show_text:
                 text_box(0, 0, game_screen.width, game_screen.height, title, contents, game_screen)
@@ -170,30 +189,31 @@ def main(stdscr):
                 if key == ord('\n'):
                     show_text = False
             else:
-                ox, oy = x, y
+                ox, oy = player.x, player.y
 
                 if key == curses.KEY_UP:
-                    y = max(0, y - 1)
+                    player.y = max(0, player.y - 1)
                 elif key == curses.KEY_DOWN:
-                    y = min(height - 1, y + 1)
+                    player.y = min(height - 1, player.y + 1)
                 elif key == curses.KEY_LEFT:
-                    x = max(0, x - 1)
+                    player.x = max(0, player.x - 1)
                 elif key == curses.KEY_RIGHT:
-                    x = min(width - 1, x + 1)
+                    player.x = min(width - 1, player.x + 1)
                 elif key == ord('l'):
                     for n in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
                         for entity in level.entities:
-                            if entity.x == x + n[0] and entity.y == y + n[1]:
+                            if entity.x == player.x + n[0] and entity.y == player.y + n[1]:
                                 show_text = True
                                 title = entity.name
                                 contents = entity.description
+                                add_message(f"You examine the {entity.name}.")
                                 break
                 elif key == 27:
                     break
 
-                if not solids[y, x]:
+                if not solids[player.y, player.x]:
                     for entity in level.entities:
-                        if entity.x == x and entity.y == y:
+                        if entity.x == player.x and entity.y == player.y:
                             interaction_type, interaction_data = entity.interact()
 
                             match interaction_type:
@@ -201,14 +221,16 @@ def main(stdscr):
                                     show_text = True
                                     title = entity.name
                                     contents = entity.description
+                                    add_message(f"You examine the {entity.name}.")
                                 case "dialogue":
                                     show_text = True
                                     title = entity.name
                                     contents = interaction_data
-                    x, y = ox, oy
+                                    add_message(f"You speak to the {entity.name}.")
+                    player.x, player.y = ox, oy
 
-            cam_x = x - gameplay_width // 2
-            cam_y = y - gameplay_height // 2
+            cam_x = player.x - gameplay_width // 2
+            cam_y = player.y - gameplay_height // 2
 
     while True:
         if not main_menu():

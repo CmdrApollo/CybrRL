@@ -1,3 +1,5 @@
+import random
+
 class Buffer:
     def __init__(self, width, height):
         self.width, self.height = width, height
@@ -98,7 +100,7 @@ class Level:
                             break
 
 class Entity:
-    def __init__(self, x, y, name, description, char, color, solid=True):
+    def __init__(self, x, y, name, description, char, color, solid=True, health=1000, max_health=1000):
         self.x = x
         self.y = y
         self.name = name
@@ -106,6 +108,9 @@ class Entity:
         self.char = char
         self.color = color
         self.solid = solid
+        
+        self.health = health
+        self.max_health = max_health
 
     def interact(self):
         # default interaction
@@ -127,3 +132,16 @@ class NPC(Entity):
 class MangledKobold(NPC):
     def __init__(self, x, y):
         super().__init__(x, y, "Mangled Kobold", "Before you, you see a Kobold who has been mangled by cybernetic enhancments; almost to the point of no recognition. You wonder if the poor creature is still whole beneath all of the technology that engulfs its small body. They grunt at you annoyedly.", "The kobold groans to life, machines sputtering as they do so. \"Go away,\" they tell you in a dry voice.", 'k', 'cyan')
+
+class Enemy(Entity):
+    def __init__(self, x, y, name, description, health, damage, char, color):
+        super().__init__(x, y, name, description, char, color, health, health)
+        self.damage = damage
+    
+    def interact(self):
+        x = self.damage + random.randint(-1, 1)
+        return ("attack", f"{self.name} attacks you for {x} damage!")
+    
+class Kobold(Enemy):
+    def __init__(self, x, y):
+        super().__init__(x, y, "Kobold", "This small, draconic creature bears striking resemblence to the dragons of the days of yore. Or so you've been told.", 10, 3, 'k', 'red')
