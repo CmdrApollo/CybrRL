@@ -150,9 +150,9 @@ class HumanoidEnemy(Enemy):
     def __init__(self, x, y, name, description, health, damage, color):
         super().__init__(x, y, name, description, health, damage, '@', color)
     
-class Goblin(HumanoidEnemy):
+class Goblin(Enemy):
     def __init__(self, x, y):
-        super().__init__(x, y, "Goblin", "A medium-sized, green, humanoid creature. Generally known for their hostility and shady business tactics.", 6, 2, 'green')
+        super().__init__(x, y, "Goblin", "A medium-sized, green, humanoid creature. Generally known for their hostility and shady business tactics.", 6, 2, 'g', 'green')
         
 class Kobold(Enemy):
     def __init__(self, x, y):

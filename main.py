@@ -16,16 +16,17 @@ GAMENAME = "Aether Collapse"
 
 end_text = "[ENTER] to continue"
 
-BIG_WINDOW = None
-
-while True:
-    i = input("Big or Small Terminal (0=Big, 1=Small [Recommended])? ").lower().strip()
-    if i == '0':
-        BIG_WINDOW = True
-        break
-    elif i == '1':
-        BIG_WINDOW = False
-        break
+i = input("Window width (leave empty for recommended of 80)? ").lower().strip()
+try:
+    width = int(i)
+except ValueError:
+    width = 80
+        
+i = input("Window height (leave empty for recommended of 30)? ").lower().strip()
+try:
+    height = int(i)
+except ValueError:
+    height = 30
 
 class GameScene:
     MAIN_MENU = 0
@@ -33,13 +34,8 @@ class GameScene:
 
 def main(stdscr):
     level_size = (50, 50)
-
-    if BIG_WINDOW:
-        width, height = 120, 40
-        gameplay_width, gameplay_height = 90, 30
-    else:
-        width, height = 80, 30
-        gameplay_width, gameplay_height = 60, 22
+    
+    gameplay_width, gameplay_height = int(width * (2 / 3)), int(height * (2 / 3))
 
     curses.start_color()
 
