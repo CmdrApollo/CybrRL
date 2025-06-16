@@ -23,13 +23,33 @@ class Buffer:
     
     def set_text(self, x, y, text, color):
         i = j = 0
+        c = color
+        cont = True
         for char in text:
-            if char == '\n':
-                j += 1
-                i = 0
+            if char == '`':
+                if c == color:
+                    cont = False
+                c = color
                 continue
-            self.set_at(x + i, y + j, char, color)
-            i += 1
+            if cont:
+                if char == '\n':
+                    j += 1
+                    i = 0
+                    continue
+                self.set_at(x + i, y + j, char, c)
+                i += 1
+            else:
+                c = {
+                    'w': 'white',
+                    'r': 'red',
+                    'g': 'green',
+                    'b': 'blue',
+                    'y': 'yellow',
+                    'c': 'cyan',
+                    'm': 'magenta',
+                    'a': 'gray'
+                }[char]
+                cont = True
 
     def set_col(self, x, y, color):
         char = self._buf[y * self.width + x][0]
@@ -77,7 +97,7 @@ class Buffer:
                     'yellow': colors.YELLOW,
                     'cyan': colors.CYAN,
                     'magenta': colors.MAGNETA,
-                    'inverse': colors.INVERSE,
+                    'gray': colors.GRAY,
                 }[c[1]])
 
 class Level:
@@ -111,8 +131,11 @@ class Entity:
         
         self.health = health
         self.max_health = max_health
+    
+    def on_my_turn(self, player, solids):
+        pass
 
-    def interact(self):
+    def interact(self, player):
         # default interaction
         # tells what the player
         # should do when it bump
@@ -121,18 +144,53 @@ class Entity:
         # description
         return ("description", None)
 
+class Door(Entity):
+    def __init__(self, x, y):
+        super().__init__(x, y, "Door", "A simple wooden door.", '+', 'red', True, 10, 10)
+        self.open = False
+    
+    def interact(self, player):
+        self.open = not self.open
+        self.solid = not self.open
+        self.char = '+' if not self.open else '/'
+        
+        return ("none", None)
+
 class Player(Entity):
     def __init__(self, x, y):
         super().__init__(x, y, "You", "Yourself.", '@', 'yellow', health=10, max_health=10)
         self.strength = 2
+        self.magic = self.max_magic = 10
+        self.capacity, self.max_capacity = 0, 10
+
+        self.hunger = 0
+
+        self.vision = 5
+
+        self.gold = 0
 
 class NPC(Entity):
     def __init__(self, x, y, name, description, dialogue, char, color):
         super().__init__(x, y, name, description, char, color, health=5, max_health=5)
         self.dialogue = dialogue
     
-    def interact(self):
-        return ("dialogue", self.dialogue)
+    def on_my_turn(self, player, solids):
+        n = random.choice([
+            (0, -1),
+            (0, 1),
+            (-1, 0),
+            (1, 0)
+        ])
+
+        self.x += n[0]
+        self.y += n[1]
+
+        if not solids[self.y, self.x] or (self.x == player.x and self.y == player.y):
+            self.x -= n[0]
+            self.y -= n[1]
+    
+    def interact(self, player):
+        return ("swap", None)
 
 class MangledKobold(NPC):
     def __init__(self, x, y):
@@ -143,7 +201,7 @@ class Enemy(Entity):
         super().__init__(x, y, name, description, char, color, True, health, health)
         self.damage = damage
     
-    def interact(self):
+    def interact(self, player):
         return ("attack", None)
     
 class HumanoidEnemy(Enemy):

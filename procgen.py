@@ -95,7 +95,7 @@ def generate_dungeon(
             ex, ey = new_room.center
             ex += random.randint(-1, 1)
             ey += random.randint(-1, 1)
-            dungeon.entities.append(random.choice([Goblin, Kobold, Bat])(ex, ey))
+            dungeon.entities.append(random.choice([Door, Goblin, Kobold, Bat])(ex, ey))
             for x, y in tunnel_between(rooms[-1].center, new_room.center):
                 dungeon.buffer._buf[y * dungeon.width + x] = ('.', 0)
 
