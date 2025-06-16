@@ -17,17 +17,17 @@ GAMENAME = "Aether Collapse"
 
 end_text = "[ENTER] to continue"
 
-i = input("Window width (leave empty for recommended of 92)? ").lower().strip()
+i = input("Window width (leave empty for recommended of 100)? ").lower().strip()
 try:
     width = int(i)
 except ValueError:
-    width = 92
+    width = 100
         
-i = input("Window height (leave empty for recommended of 38)? ").lower().strip()
+i = input("Window height (leave empty for recommended of 40)? ").lower().strip()
 try:
     height = int(i)
 except ValueError:
-    height = 38
+    height = 40
 
 class GameScene:
     MAIN_MENU = 0
@@ -317,16 +317,12 @@ def main(stdscr):
 
                     if key == curses.KEY_UP:
                         player.y = max(0, player.y - 1)
-                        entities_can_go = True
                     elif key == curses.KEY_DOWN:
                         player.y = min(level_size[1] - 1, player.y + 1)
-                        entities_can_go = True
                     elif key == curses.KEY_LEFT:
                         player.x = max(0, player.x - 1)
-                        entities_can_go = True
                     elif key == curses.KEY_RIGHT:
                         player.x = min(level_size[0] - 1, player.x + 1)
-                        entities_can_go = True
                     elif key == ord('5'):
                         entities_can_go = True
                     elif key == ord('l'):
@@ -361,21 +357,22 @@ def main(stdscr):
                                 match interaction_type:
                                     case "description":
                                         show_text = True
-                                        title = entity.name
-                                        contents = entity.description + f" The {entity.name} has {entity.health}/{entity.max_health} HP."
-                                        add_message(f"You examine the {entity.name}.")
+                                        title = '`c' + entity.name + '`'
+                                        contents = entity.description + f" The `c{entity.name}` has `g{entity.health}`/`g{entity.max_health}` HP."
+                                        add_message(f"You examine the `c{entity.name}`.")
                                     case "dialogue":
                                         show_text = True
                                         title = entity.name
                                         contents = interaction_data
-                                        add_message(f"You speak to the {entity.name}.")
+                                        add_message(f"You speak to the `c{entity.name}`.")
                                     case "attack":
-                                        entity.health = max(0, entity.health - (player.strength + random.randint(-1, 1)))
+                                        dmg = player.strength + random.randint(-1, 1)
+                                        entity.health = max(0, entity.health - (dmg))
                                         if entity.health == 0:
                                             level.entities.remove(entity)
-                                            add_message(F"You attack the {entity.name}, killing it!")
+                                            add_message(f"You attack the `c{entity.name}` for `y{dmg}` Hp, killing it!")
                                         else:
-                                            add_message(F"You attack the {entity.name}.")
+                                            add_message(f"You attack the `c{entity.name}` for `y{dmg}` Hp.")
                                     case "swap":
                                         tx, ty = ox, oy
                                         player.x, player.y = entity.x, entity.y
@@ -384,6 +381,8 @@ def main(stdscr):
 
                         if replace_player:
                             player.x, player.y = ox, oy
+                    elif (ox, oy) != (player.x, player.y):
+                        entities_can_go = True
 
             if key == 27:
                 menu = not menu
