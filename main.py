@@ -272,7 +272,10 @@ def main(stdscr):
                 case "attack":
                     if roll_against(player.calculate_melee_chance()):
                         dmg = player.strength + random.randint(-1, 1)
-                        entity.health = max(0, entity.health - (dmg))
+                        if entity.has_status(Status.FROZEN):
+                            # frozen entities take 1.5x damage
+                            dmg = math.ceil(dmg * 1.5)
+                        entity.health = max(0, entity.health - dmg)
                         if entity.health == 0:
                             level.entities.remove(entity)
                             add_message(f"You `yattack` the `c{entity.name}` for `g{dmg}` `aHp`, `rkilling it`!")
@@ -325,31 +328,55 @@ def main(stdscr):
                 add_message(f"They blink `g{d}` tiles!", 'white')
 
         def cast_confuse(player, target, level, tier):
-            pass
+            amount = [3, 2, 5][tier]
+            if target.has_status(Status.CONFUSED):
+                for i, status in target.statuses:
+                    if status[0] == Status.CONFUSED:
+                        target.statuses[i] = (status[0], status[1] + amount)
+            else:
+                target.statuses.append((Status.CONFUSED, amount))
 
         def cast_cure_wounds(player, target, level, tier):
             amount = [2, 1, 4][tier]
             new_health = min(target.max_health, target.health + amount)
-            add_message(f"You cure `g{new_health - target.health}` of their `aHp`.")
+            add_message(f"You restore `g{new_health - target.health}` of their `aHp`.")
             target.health = new_health
 
         def cast_endurance(player, target, level, tier):
             pass
 
         def cast_flame(player, target, level, tier):
-            pass
+            amount = [2, 1, 3][tier]
+            if target.has_status(Status.ONFIRE):
+                for i, status in target.statuses:
+                    if status[0] == Status.ONFIRE:
+                        target.statuses[i] = (status[0], status[1] + amount)
+            else:
+                target.statuses.append((Status.ONFIRE, amount))
 
         def cast_focus(player, target, level, tier):
             pass
 
         def cast_freeze(player, target, level, tier):
-            pass
+            amount = [3, 2, 5][tier]
+            if target.has_status(Status.FROZEN):
+                for i, status in target.statuses:
+                    if status[0] == Status.FROZEN:
+                        target.statuses[i] = (status[0], status[1] + amount)
+            else:
+                target.statuses.append((Status.FROZEN, amount))
 
         def cast_magic_missile(player, target, level, tier):
             pass
 
         def cast_poison(player, target, level, tier):
-            pass
+            amount = [2, 1, 3][tier]
+            if target.has_status(Status.POISONED):
+                for i, status in target.statuses:
+                    if status[0] == Status.POISONED:
+                        target.statuses[i] = (status[0], status[1] + amount)
+            else:
+                target.statuses.append((Status.POISONED, amount))
 
         def cast_satiate(player, target, level, tier):
             amount = [2, 1, 4][tier]
@@ -361,7 +388,13 @@ def main(stdscr):
             pass
 
         def cast_zap(player, target, level, tier):
-            pass
+            amount = [3, 2, 5][tier]
+            if target.has_status(Status.SHOCKED):
+                for i, status in target.statuses:
+                    if status[0] == Status.SHOCKED:
+                        target.statuses[i] = (status[0], status[1] + amount)
+            else:
+                target.statuses.append((Status.SHOCKED, amount))
 
         def cast_none(player, target, level, tier):
             pass
@@ -432,7 +465,7 @@ def main(stdscr):
                 "\n".join([
                     f"`aHp`: `g{player.health}`/`g{player.max_health}` `aMp`: `g{player.magic}`/`g{player.max_magic}` `aHg`: `g{player.hunger}` `aCap`: `g{player.capacity}`/`g{player.max_capacity}` `yGold`: `g{player.gold}` `yVision`: `g{player.vision}`",
                     f"`aMelee`: `g{player.calculate_melee_chance()}%` `aBlock`: `g{player.calculate_block_chance()}%` `aRanged`: `g{player.calculate_ranged_chance()}%` `aStealth`: `g{player.calculate_stealth_chance()}%`",
-                    " ".join(status_texts[s] for s in sorted(player.statuses))
+                    " ".join(f"{status_texts[s[0]]}<`g{s[1]}`>" for s in sorted(player.statuses))
                 ]),
                 Colors.WHITE)
 
@@ -545,15 +578,19 @@ def main(stdscr):
 
                             if isinstance(item, MagicalConsumibleItem):
                                 # cast spell
-                                cast_spell(player, examining_entity, level, item.name, item.intensity, isinstance(item, Potion))
+                                cast_spell(player, examining_entity, level, item.get_fancy_name() if not item.identified else item.name, item.intensity, isinstance(item, Potion))
                                 show_text = False
                                 examining_entity = None
                                 if isinstance(item, Wand):
+                                    # wands are multi-use
                                     item.charges -= 1
                                     if item.charges < 1:
                                         player.take_away(item)
+                                        add_message(f"The `c{item.name}` withers away!")
                                 else:
+                                    # other magical consumables are not
                                     player.take_away(item)
+                                    add_message(f"The `c{item.name}` withers away!")
 
                             entities_can_go = True
                             using = False
@@ -612,92 +649,97 @@ def main(stdscr):
                             show_text = False
                             examining_entity = None
                 else:
-                    ox, oy = player.x, player.y
-
-                    if key == curses.KEY_UP:
-                        player.y = max(0, player.y - 1)
-                    elif key == curses.KEY_DOWN:
-                        player.y = min(level_size[1] - 1, player.y + 1)
-                    elif key == curses.KEY_LEFT:
-                        player.x = max(0, player.x - 1)
-                    elif key == curses.KEY_RIGHT:
-                        player.x = min(level_size[0] - 1, player.x + 1)
-                    elif key == ord(' '):
-                        # wait
-                        entities_can_go = True
-                    elif key == ord('x'):
-                        # examine
-                        if not examining_entity:
-                            closest_distance = 0xffff
-                            closest_entity = None
-                            for entity in level.entities:
-                                d = math.sqrt(pow(entity.x - player.x, 2) + pow(entity.y - player.y, 2))
-                                if active_visibility[entity.y * level.width + entity.x] and d < closest_distance:
-                                    closest_distance = d
-                                    closest_entity = entity
-                                
-                            if closest_entity:
-                                show_text = True
-                                title = '`c' + closest_entity.name + '`'
-                                contents = closest_entity.description + f" The `c{closest_entity.name}` has `g{closest_entity.health}`/`g{closest_entity.max_health}` Hp."
-                                add_message(f"You examine the `c{closest_entity.name}`.")
-                                examining_entity = closest_entity
-                                cursor.x = examining_entity.x
-                                cursor.y = examining_entity.y
-                            else:
-                                show_text = True
-                                examining_entity = player
-                                cursor.x = examining_entity.x
-                                cursor.y = examining_entity.y
-                                title = '`c' + examining_entity.name + '`'
-                                contents = examining_entity.description + f" The `c{examining_entity.name}` has `g{examining_entity.health}`/`g{examining_entity.max_health}` Hp."
-                                add_message(f"You examine the `c{examining_entity.name}`.")
-                    elif key == ord('i'):
-                        # identify
-                        if len(player.backpack) and not using and not equipping:
-                            identifying = True
-                            inventory_choice = 0
-                    elif key == ord('e'):
-                        # equip
-                        if len(player.backpack) and not identifying and not using:
-                            equipping = True
-                            item_to_equip = None
-                            gear_choice = 0
+                    if player.has_status(Status.CONFUSED) or player.has_status(Status.SHOCKED) or player.has_status(Status.FROZEN):
+                        if key == ord(' '):
+                            # wait
+                            entities_can_go = True
                     else:
-                        for entity in level.entities:
-                            for n in [
-                                (0, -1),
-                                (0, 1),
-                                (-1, 0),
-                                (1, 0)
-                            ]:
-                                if entity.x == player.x + n[0] and entity.y == player.y + n[1]:
-                                    interaction_type, interaction_data = entity.key_interact(key, player)
+                        ox, oy = player.x, player.y
+
+                        if key == curses.KEY_UP:
+                            player.y = max(0, player.y - 1)
+                        elif key == curses.KEY_DOWN:
+                            player.y = min(level_size[1] - 1, player.y + 1)
+                        elif key == curses.KEY_LEFT:
+                            player.x = max(0, player.x - 1)
+                        elif key == curses.KEY_RIGHT:
+                            player.x = min(level_size[0] - 1, player.x + 1)
+                        elif key == ord(' '):
+                            # wait
+                            entities_can_go = True
+                        elif key == ord('x'):
+                            # examine
+                            if not examining_entity:
+                                closest_distance = 0xffff
+                                closest_entity = None
+                                for entity in level.entities:
+                                    d = math.sqrt(pow(entity.x - player.x, 2) + pow(entity.y - player.y, 2))
+                                    if active_visibility[entity.y * level.width + entity.x] and d < closest_distance:
+                                        closest_distance = d
+                                        closest_entity = entity
+                                    
+                                if closest_entity:
+                                    show_text = True
+                                    title = '`c' + closest_entity.name + '`'
+                                    contents = closest_entity.description + f" The `c{closest_entity.name}` has `g{closest_entity.health}`/`g{closest_entity.max_health}` Hp."
+                                    add_message(f"You examine the `c{closest_entity.name}`.")
+                                    examining_entity = closest_entity
+                                    cursor.x = examining_entity.x
+                                    cursor.y = examining_entity.y
+                                else:
+                                    show_text = True
+                                    examining_entity = player
+                                    cursor.x = examining_entity.x
+                                    cursor.y = examining_entity.y
+                                    title = '`c' + examining_entity.name + '`'
+                                    contents = examining_entity.description + f" The `c{examining_entity.name}` has `g{examining_entity.health}`/`g{examining_entity.max_health}` Hp."
+                                    add_message(f"You examine the `c{examining_entity.name}`.")
+                        elif key == ord('i'):
+                            # identify
+                            if len(player.backpack) and not using and not equipping:
+                                identifying = True
+                                inventory_choice = 0
+                        elif key == ord('e'):
+                            # equip
+                            if len(player.backpack) and not identifying and not using:
+                                equipping = True
+                                item_to_equip = None
+                                gear_choice = 0
+                        else:
+                            for entity in level.entities:
+                                for n in [
+                                    (0, -1),
+                                    (0, 1),
+                                    (-1, 0),
+                                    (1, 0)
+                                ]:
+                                    if entity.x == player.x + n[0] and entity.y == player.y + n[1]:
+                                        interaction_type, interaction_data = entity.key_interact(key, player)
+
+                                        if interact_with(entity, interaction_type, interaction_data):
+                                            entities_can_go = True
+                                            break
+
+                                if entity.x == player.x and entity.y == player.y:
+                                    interaction_type, interaction_data = entity.direct_key_interact(key, player)
 
                                     if interact_with(entity, interaction_type, interaction_data):
                                         entities_can_go = True
                                         break
 
-                            if entity.x == player.x and entity.y == player.y:
-                                interaction_type, interaction_data = entity.direct_key_interact(key, player)
+                        if not solids[player.y, player.x]:
+                            replace_player = True
+                            for entity in level.entities[::-1]:
+                                if entity.x == player.x and entity.y == player.y:
+                                    interaction_type, interaction_data = entity.interact(player)
 
-                                if interact_with(entity, interaction_type, interaction_data):
-                                    entities_can_go = True
-                                    break
-
-                    if not solids[player.y, player.x]:
-                        replace_player = True
-                        for entity in level.entities[::-1]:
-                            if entity.x == player.x and entity.y == player.y:
-                                interaction_type, interaction_data = entity.interact(player)
-
-                                if interact_with(entity, interaction_type, interaction_data):
-                                    entities_can_go = True
-                                    break
-                        if replace_player:
-                            player.x, player.y = ox, oy
-                    elif (ox, oy) != (player.x, player.y):
-                        entities_can_go = True
+                                    if interact_with(entity, interaction_type, interaction_data):
+                                        entities_can_go = True
+                                        break
+                            if replace_player:
+                                player.x, player.y = ox, oy
+                        elif (ox, oy) != (player.x, player.y):
+                            entities_can_go = True
 
             if key == 27:
                 if examining_entity:
@@ -720,9 +762,77 @@ def main(stdscr):
             if entities_can_go:
                 for entity in level.entities[::-1]:
                     entity.on_my_turn(player, solids)
+
+                    for i, status in enumerate(entity.statuses):
+                        match status[0]:
+                            case Status.ONFIRE:
+                                entity.health = max(0, entity.health - status[1])
+                            case Status.FROZEN:
+                                pass
+                            case Status.SHOCKED:
+                                pass
+                            case Status.POISONED:
+                                entity.health = max(0, entity.health - 1)
+                            case Status.CONFUSED:
+                                while True:
+                                    n = random.choice([
+                                        (0, -1),
+                                        (0, 1),
+                                        (-1, 0),
+                                        (1, 0)
+                                    ])
+
+                                    entity.x += n[0]
+                                    entity.y += n[1]
+
+                                    if not solids[entity.y, entity.x] or (entity.x == player.x and entity.y == player.y):
+                                        entity.x -= n[0]
+                                        entity.y -= n[1]
+                                        continue
+                                    break
+                        entity.statuses[i] = (status[0], status[1] - 1)
+                    
+                    for s in entity.statuses[::-1]:
+                        if s[1] <= 0:
+                            entity.statuses.remove(s)
                     
                     if entity.remove:
                         level.entities.remove(entity)
+                
+                # after all entities have gone (at beginning of player's next turn),
+                # apply all status effects
+                for i, status in enumerate(player.statuses):
+                    match status[0]:
+                        case Status.ONFIRE:
+                            player.health = max(0, player.health - status[1])
+                        case Status.FROZEN:
+                            pass
+                        case Status.SHOCKED:
+                            pass
+                        case Status.POISONED:
+                            player.health = max(0, player.health - 1)
+                        case Status.CONFUSED:
+                            while True:
+                                n = random.choice([
+                                    (0, -1),
+                                    (0, 1),
+                                    (-1, 0),
+                                    (1, 0)
+                                ])
+
+                                player.x += n[0]
+                                player.y += n[1]
+
+                                if not solids[player.y, player.x]:
+                                    player.x -= n[0]
+                                    player.y -= n[1]
+                                    continue
+                                break
+                    player.statuses[i] = (status[0], status[1] - 1)
+                
+                for s in player.statuses[::-1]:
+                    if s[1] <= 0:
+                        player.statuses.remove(s)
             
             if examining_entity:
                 cursor.x = examining_entity.x

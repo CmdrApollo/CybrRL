@@ -2,11 +2,11 @@ import random
 from items import *
 
 class Status:
-    ONFIRE = 0
-    FROZEN = 1
-    SHOCKED = 2
-    POISONED = 3
-    CONFUSED = 4
+    ONFIRE = "fire"
+    FROZEN = "ice"
+    SHOCKED = "shock"
+    POISONED = "poison"
+    CONFUSED = "confuse"
 
 class Buffer:
     def __init__(self, width, height):
@@ -153,6 +153,16 @@ class Entity:
         self.max_health = max_health
 
         self.remove = False
+
+        self.statuses = []
+
+        self.can_move = False
+    
+    def has_status(self, s: str):
+        for status in self.statuses:
+            if s == status[0]:
+                return True
+        return False
     
     def on_my_turn(self, player, solids):
         pass
@@ -219,7 +229,10 @@ class Player(Entity):
         self.left_ring = None
         self.left_hand_equipment = None
         self.right_ring = None
+
         self.right_hand_equipment = None
+
+        self.can_move = True
 
         self.statuses = []
 
@@ -313,6 +326,10 @@ class NPC(Entity):
         self.block = 0
         self.ranged = 5
         self.stealth = 0
+
+        self.can_move = True
+
+        self.statuses = []
     
     def on_my_turn(self, player, solids):
         n = random.choice([
@@ -354,6 +371,10 @@ class Enemy(Entity):
         self.block = 0
         self.ranged = 5
         self.stealth = 0
+
+        self.can_move = True
+
+        self.statuses = []
     
     def interact(self, player):
         return ("attack", None)
