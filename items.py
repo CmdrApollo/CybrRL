@@ -38,7 +38,6 @@ class MagicalConsumibleItem:
                     "Poison",
                     "Satiate",
                     "Shield",
-                    "Summon",
                     "Zap",
                 ][self.effect]
             }"

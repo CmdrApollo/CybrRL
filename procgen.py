@@ -56,7 +56,6 @@ def tunnel_between(
     for x, y in tcod.los.bresenham((corner_x, corner_y), (x2, y2)).tolist():
         yield x, y
 
-
 def generate_dungeon(
     max_rooms: int,
     room_min_size: int,
@@ -66,6 +65,8 @@ def generate_dungeon(
 ) -> Level:
     """Generate a new dungeon map."""
     dungeon = Level(map_width, map_height)
+
+    dungeon.buffer.set_rect_filled(0, 0, map_width, map_height, '#', 'white')
 
     rooms: List[RectangularRoom] = []
 
@@ -114,9 +115,10 @@ def generate_dungeon(
                 for i, n in enumerate([(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]):
                     if dungeon.buffer.get(x + n[0], y + n[1])[0] == '.':
                         neighbors[i] = True
-                    if dungeon.buffer.get(x + n[0], y + n[1])[0] == ' ':
+                    if dungeon.buffer.get(x + n[0], y + n[1])[0] == '#':
                         walls[i] = True
-                if (neighbors[0] and neighbors[1] and neighbors[2] and walls[3] and walls[4] and neighbors[6]):# or (neighbors[2] and neighbors[4] and neighbors[7] and neighbors[3]):
+                if ((neighbors[0] and neighbors[1] and neighbors[2] and walls[3] and walls[4] and neighbors[6])
+                    or (neighbors[2] and neighbors[4] and neighbors[7] and walls[1] and walls[6] and neighbors[3])):
                     # cursed
                     dungeon.entities.append(Door(x, y))
 

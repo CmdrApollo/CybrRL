@@ -6,6 +6,7 @@ class Status:
     FROZEN = 1
     SHOCKED = 2
     POISONED = 3
+    CONFUSED = 4
 
 class Buffer:
     def __init__(self, width, height):
@@ -46,7 +47,7 @@ class Buffer:
                 self.set_at(x + i, y + j, char, c)
                 i += 1
             else:
-                c = {
+                if char in {
                     'w': 'white',
                     'r': 'red',
                     'g': 'green',
@@ -55,7 +56,19 @@ class Buffer:
                     'c': 'cyan',
                     'm': 'magenta',
                     'a': 'gray'
-                }[char]
+                }:
+                    c = {
+                        'w': 'white',
+                        'r': 'red',
+                        'g': 'green',
+                        'b': 'blue',
+                        'y': 'yellow',
+                        'c': 'cyan',
+                        'm': 'magenta',
+                        'a': 'gray'
+                    }[char]
+                else:
+                    c = 'white'
                 cont = True
 
     def set_col(self, x, y, color):
@@ -286,6 +299,20 @@ class NPC(Entity):
     def __init__(self, x, y, name, description, dialogue, char, color):
         super().__init__(x, y, name, description, char, color, health=5, max_health=5)
         self.dialogue = dialogue
+
+        self.magic = self.max_magic = 10
+        self.capacity, self.max_capacity = 0, 16
+
+        self.hunger = 0
+
+        self.vision = 5
+
+        self.gold = 0
+
+        self.melee = 5
+        self.block = 0
+        self.ranged = 5
+        self.stealth = 0
     
     def on_my_turn(self, player, solids):
         n = random.choice([
@@ -313,6 +340,20 @@ class Enemy(Entity):
     def __init__(self, x, y, name, description, health, damage, char, color):
         super().__init__(x, y, name, description, char, color, True, health, health)
         self.damage = damage
+
+        self.magic = self.max_magic = 10
+        self.capacity, self.max_capacity = 0, 16
+
+        self.hunger = 0
+
+        self.vision = 5
+
+        self.gold = 0
+
+        self.melee = 5
+        self.block = 0
+        self.ranged = 5
+        self.stealth = 0
     
     def interact(self, player):
         return ("attack", None)

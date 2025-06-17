@@ -12,7 +12,8 @@ status_texts = {
     Status.ONFIRE: "`rBurning`",
     Status.FROZEN: "`cFrozen`",
     Status.SHOCKED: "`yShocked`",
-    Status.POISONED: "`mPoisoned`"
+    Status.POISONED: "`gPoisoned`",
+    Status.CONFUSED: "`mConfused`"
 }
 
 import numpy as np
@@ -21,6 +22,7 @@ import math
 import time
 
 GAMENAME = "Aether Collapse"
+VERSION = "v0.0.1"
 
 end_text = "[ENTER] to continue"
 
@@ -103,7 +105,8 @@ def main(stdscr):
         carry_color = None
         for line in split_up(": " + text, gameplay_width - 2).splitlines():
             if carry_color:
-                line = f'`{carry_color}' + line
+                if line[0] != '`':
+                    line = f'`{carry_color}' + line
                 carry_color = None
 
             has_color = False
@@ -141,7 +144,7 @@ def main(stdscr):
             screen.clear()
 
             stdscr.subwin(height + 2, width + 2, 0, 0).box()
-            stdscr.addstr(0, 1, GAMENAME)
+            stdscr.addstr(0, 1, GAMENAME + " " + VERSION)
 
             screen.set_rect(0, 0, game_screen.width + 2, game_screen.height + 2, Colors.WHITE)
             screen.set_text(2, 0, titles[0], Colors.GRAY)
@@ -202,8 +205,6 @@ def main(stdscr):
             15, 4, 6, *level_size
         )
 
-        level.wallify(Colors.WHITE)
-
         active_visibility = level.visibility.copy()
 
         solids = None
@@ -238,6 +239,7 @@ def main(stdscr):
         cursor = Point(0, 0)
         
         menu_options = [
+            "Controls",
             "Save & Quit",
             "Quit"
         ]
@@ -300,7 +302,7 @@ def main(stdscr):
         using = False
 
         def cast_blink(player, target, level, tier):
-            distance = [4, 2, 6][tier]
+            distance = [3, 2, 4][tier]
 
             options = []
 
@@ -309,7 +311,7 @@ def main(stdscr):
                     if dx == 0 and dy == 0: continue
 
                     try:
-                        if solids[target.y + dy, target.x + dx]:
+                        if solids[target.y + dy, target.x + dx] and abs(dx) + abs(dy) == distance:
                             options.append((target.x + dx, target.y + dy))
                     except IndexError:
                         continue
@@ -329,6 +331,7 @@ def main(stdscr):
             amount = [2, 1, 4][tier]
             new_health = min(target.max_health, target.health + amount)
             add_message(f"You cure `g{new_health - target.health}` of their `aHp`.")
+            target.health = new_health
 
         def cast_endurance(player, target, level, tier):
             pass
@@ -349,7 +352,10 @@ def main(stdscr):
             pass
 
         def cast_satiate(player, target, level, tier):
-            pass
+            amount = [2, 1, 4][tier]
+            new_hunger = max(0, target.hunger - amount)
+            add_message(f"You satiate `g{target.hunger - new_hunger}` of their `aHg`.")
+            target.hunger = new_hunger
 
         def cast_shield(player, target, level, tier):
             pass
@@ -357,7 +363,11 @@ def main(stdscr):
         def cast_zap(player, target, level, tier):
             pass
 
+        def cast_none(player, target, level, tier):
+            pass
+
         spellbook = {
+            "Nothingness": cast_none,
             "Blink": cast_blink,
             "Confuse": cast_confuse,
             "Cure Wounds": cast_cure_wounds,
@@ -372,13 +382,19 @@ def main(stdscr):
             "Zap": cast_zap
         }
 
-        def cast_spell(player, target, level, spell_name, tier):
+        def cast_spell(player, target, level, spell_name, tier, is_potion):
             cast = False
             for k, v in spellbook.items():
                 if k in spell_name:
-                    add_message(f"You cast `m{k}` on {'the' if target != player else ''} {'`cyourself`' if target == player else f'`c{target.name}`'}!")
-                    v(player, target, level, tier)
-                    cast = True
+                    if is_potion:
+                        t = player
+                        add_message(f"You drink the `cPotion`, casting `m{k}` on `cyourself`!")
+                    else:
+                        t = target
+                        add_message(f"You cast `m{k}` on {f'the `c{t.name}`' if t != player else '`cyourself`'}!")
+                    v(player, t, level, tier)
+                    if k != "Nothingness":
+                        cast = True
             if not cast:
                 add_message("Nothing happens...", 'gray')
 
@@ -400,7 +416,7 @@ def main(stdscr):
             game_screen.clear()
 
             stdscr.subwin(height + 2, width + 2, 0, 0).box()
-            stdscr.addstr(0, 1, GAMENAME)
+            stdscr.addstr(0, 1, GAMENAME + " " + VERSION)
 
             screen.set_rect(0, 0, game_screen.width + 2, game_screen.height + 2, Colors.WHITE)
             screen.set_text(2, 0, titles[0], Colors.GRAY)
@@ -468,7 +484,7 @@ def main(stdscr):
                     game_screen.set_rect(cursor.x - cam_x - 1, cursor.y - cam_y - 1, 3, 3, c)
 
                 for i, item in enumerate(player.backpack):
-                    text = ("> " if i == inventory_choice and (identifying or using or equipping) else "  ") + item.name + (f' [`y{item.id_cost}` Mp]' if not item.identified else '')
+                    text = ("> " if i == inventory_choice and (identifying or using or equipping) else "  ") + item.name + (f'<`g{item.charges}`>' if isinstance(item, Wand) else '') + (f' [`g{item.id_cost}` Mp]' if not item.identified else '')
                     screen.set_text(gameplay_width + 1, 1 + i, text, Colors.YELLOW if i == inventory_choice and (identifying or using or equipping) else Colors.WHITE)
             else:
                 t = "\n".join([
@@ -529,10 +545,15 @@ def main(stdscr):
 
                             if isinstance(item, MagicalConsumibleItem):
                                 # cast spell
-                                cast_spell(player, examining_entity, level, item.name, item.intensity)
+                                cast_spell(player, examining_entity, level, item.name, item.intensity, isinstance(item, Potion))
                                 show_text = False
                                 examining_entity = None
-                                player.take_away(item)
+                                if isinstance(item, Wand):
+                                    item.charges -= 1
+                                    if item.charges < 1:
+                                        player.take_away(item)
+                                else:
+                                    player.take_away(item)
 
                             entities_can_go = True
                             using = False
@@ -682,9 +703,9 @@ def main(stdscr):
                 if examining_entity:
                     show_text = False
                     examining_entity = None
-                elif identifying or using or equipping:
-                    identifying = False
                     using = False
+                elif identifying or equipping:
+                    identifying = False
                     equipping = False
                 else:
                     menu = not menu
