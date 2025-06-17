@@ -1,0 +1,65 @@
+Hostile NPCs:
+    Bat
+    Goblin
+    Kobold
+
+Neutral NPCs:
+    Mangled Kobold
+
+Head Equipment:
+
+Body Equipment:
+
+Foot Equipment:
+
+Melee Weapons:
+    Iron Staff
+    Wooden Staff
+
+Ranged Weapons:
+    Slingshot
+    Sling
+    Wooden Bow
+    Wooden Crossbow
+
+Ammunition:
+    Iron Arrow
+    Iron Bolt
+    Rock
+    Wooden Arrow
+    Wooden Bolt
+
+Consumable Spell Items:
+    Scroll of [Effect]
+    Scroll of Lesser [Effect]
+    Scroll of Major [Effect]
+    Wand of [Effect]
+    Wand of Lesser [Effect]
+    Wand of Major [Effect]
+    Potion of [Effect]
+    Potion of Lesser [Effect]
+    Potion of Major [Effect]
+
+Normal Consumable Food Items:
+    Banana
+    Bread
+    Hardtack
+    Orange
+
+Magical Consumable Food Items:
+    Telefruit
+
+Spell Effects:
+    Blink
+    Confuse
+    Cure Wounds
+    Endurance
+    Flame
+    Focus
+    Freeze
+    Magic Missile
+    Poison
+    Satiate
+    Shield
+    Summon
+    Zap

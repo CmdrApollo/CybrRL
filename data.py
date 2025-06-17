@@ -1,4 +1,11 @@
 import random
+from items import *
+
+class Status:
+    ONFIRE = 0
+    FROZEN = 1
+    SHOCKED = 2
+    POISONED = 3
 
 class Buffer:
     def __init__(self, width, height):
@@ -59,7 +66,7 @@ class Buffer:
         for i in range(w):
             for j in range(h):
                 if (i, j) in [(0, 0), (w - 1, 0), (w - 1, h - 1), (0, h - 1)]:
-                    self.set_at(x + i, y + j, '*', color)
+                    self.set_at(x + i, y + j, '+', color)
                 elif i == 0 or i == w - 1:
                     self.set_at(x + i, y + j, '|', color)
                 elif j == 0 or j == h - 1:
@@ -131,9 +138,17 @@ class Entity:
         
         self.health = health
         self.max_health = max_health
+
+        self.remove = False
     
     def on_my_turn(self, player, solids):
         pass
+
+    def direct_key_interact(self, key, player):
+        return ("none", None)
+
+    def key_interact(self, key, player):
+        return ("none", None)
 
     def interact(self, player):
         # default interaction
@@ -148,26 +163,124 @@ class Door(Entity):
     def __init__(self, x, y):
         super().__init__(x, y, "Door", "A simple wooden door.", '+', 'red', True, 10, 10)
         self.open = False
+
+    def key_interact(self, key, player):
+        if key == ord('c'):
+            self.open = False
+            self.solid = not self.open
+            self.char = '+' if not self.open else '/'
+            return ("doorclose", None)
+        return ("none", None)
     
     def interact(self, player):
-        self.open = not self.open
+        self.open = True
         self.solid = not self.open
         self.char = '+' if not self.open else '/'
         
-        return ("none", None)
+        return ("dooropen", None)
 
 class Player(Entity):
     def __init__(self, x, y):
         super().__init__(x, y, "You", "Yourself.", '@', 'yellow', health=10, max_health=10)
         self.strength = 2
         self.magic = self.max_magic = 10
-        self.capacity, self.max_capacity = 0, 10
+        self.capacity, self.max_capacity = 0, 16
 
         self.hunger = 0
 
         self.vision = 5
 
         self.gold = 0
+
+        self.melee = 5
+        self.block = 0
+        self.ranged = 5
+        self.stealth = 0
+
+        self.backpack = []
+    
+        self.head_equipment = None
+        self.body_equipment = None
+        self.foot_equipment = None
+
+        self.left_ring = None
+        self.left_hand_equipment = None
+        self.right_ring = None
+        self.right_hand_equipment = None
+
+        self.statuses = []
+
+    def calculate_melee_chance(self):
+        return self.melee * 10
+
+    def calculate_block_chance(self):
+        return self.block * 10
+
+    def calculate_ranged_chance(self):
+        return self.ranged * 10
+
+    def calculate_stealth_chance(self):
+        return self.stealth * 10
+
+    def give(self, item):
+        if self.capacity < self.max_capacity:
+            self.backpack.append(item)
+            self.capacity += 1
+            return True
+        return False
+
+    def take_away(self, item):
+        self.backpack.remove(item)
+        self.capacity -= 1
+
+    def put_gear_in_slot(self, item, slot):
+        fail_message = "You can't equip that item in that slot."
+        match slot:
+            case 0:
+                if isinstance(item, HeadArmor):
+                    if self.head_equipment:
+                        self.backpack.append(self.head_equipment)
+                    self.head_equipment = item
+                else:
+                    return fail_message
+            case 1:
+                if isinstance(item, BodyArmor):
+                    if self.body_equipment:
+                        self.backpack.append(self.body_equipment)
+                    self.body_equipment = item
+                else:
+                    return fail_message
+            case 2:
+                if isinstance(item, FootArmor):
+                    if self.foot_equipment:
+                        self.backpack.append(self.foot_equipment)
+                    self.foot_equipment = item
+                else:
+                    return fail_message
+            case 3:
+                if isinstance(item, Ring):
+                    if self.left_ring:
+                        self.backpack.append(self.left_ring)
+                    self.left_ring = item
+                else:
+                    return fail_message
+            case 4:
+                if self.left_hand_equipment:
+                    self.backpack.append(self.left_hand_equipment)
+                self.left_hand_equipment = item
+            case 5:
+                if isinstance(item, Ring):
+                    if self.right_ring:
+                        self.backpack.append(self.right_ring)
+                    self.right_ring = item
+                else:
+                    return fail_message
+            case 6:
+                if self.right_hand_equipment:
+                    self.backpack.append(self.right_hand_equipment)
+                self.right_hand_equipment = item
+        
+        self.backpack.remove(item)
 
 class NPC(Entity):
     def __init__(self, x, y, name, description, dialogue, char, color):
@@ -219,3 +332,31 @@ class Kobold(Enemy):
 class Bat(Enemy):
     def __init__(self, x, y):
         super().__init__(x, y, "Bat", "This blood-sucking creature flies silently throughout the dungeon, awaiting its next victim.", 4, 1, 'b', 'magenta')
+
+class ItemHolder(Entity):
+    def __init__(self, x, y, item: MagicalConsumibleItem):
+        super().__init__(x, y, item.name, item.description, item.char, item.color, False, 10, 10)
+        self.item = item
+
+    def direct_key_interact(self, key, player):
+        if key == ord('g'):
+            if player.give(self.item):
+                self.remove = True
+                return ("pickup", None)
+            return ("pickupfail", None)
+        return ("none", None)
+    
+class GoldPickup(Entity):
+    def __init__(self, x, y, amount: int):
+        super().__init__(x, y, "Gold", "Gold nugget(s) that act as the common currency for societies throughout the world.", '$', 'yellow', False, 10, 10)
+        self.amount = amount
+
+    def direct_key_interact(self, key, player):
+        if key == ord('g'):
+            player.gold += self.amount
+            self.remove = True
+            return ("goldpickup", None)
+        return ("none", None)
+
+def roll_against(x: int) -> bool:
+    return random.randint(1, 100) <= x

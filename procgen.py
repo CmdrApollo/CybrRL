@@ -6,6 +6,7 @@ from typing import Iterator, List, Tuple, TYPE_CHECKING
 import tcod
 
 from data import *
+from items import generate_random_magical_item
 
 class RectangularRoom:
     def __init__(self, x: int, y: int, width: int, height: int):
@@ -93,13 +94,30 @@ def generate_dungeon(
         else:  # All rooms after the first.
             # Dig out a tunnel between this room and the previous one.
             ex, ey = new_room.center
-            ex += random.randint(-1, 1)
-            ey += random.randint(-1, 1)
-            dungeon.entities.append(random.choice([Door, Goblin, Kobold, Bat])(ex, ey))
+            if roll_against(100):
+                # magical item
+                dungeon.entities.append(ItemHolder(ex + random.randint(-1, 1), ey + random.randint(-1, 1), generate_random_magical_item()))
+            elif roll_against(50):
+                dungeon.entities.append(random.choice([Goblin, Kobold, Bat])(ex, ey))
+            
             for x, y in tunnel_between(rooms[-1].center, new_room.center):
                 dungeon.buffer._buf[y * dungeon.width + x] = ('.', 0)
 
         # Finally, append the new room to the list.
         rooms.append(new_room)
+    
+    for x in range(dungeon.width):
+        for y in range(dungeon.height):
+            if dungeon.buffer.get(x, y)[0] == '.':
+                neighbors = [False] * 8
+                walls = [False] * 8
+                for i, n in enumerate([(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]):
+                    if dungeon.buffer.get(x + n[0], y + n[1])[0] == '.':
+                        neighbors[i] = True
+                    if dungeon.buffer.get(x + n[0], y + n[1])[0] == ' ':
+                        walls[i] = True
+                if (neighbors[0] and neighbors[1] and neighbors[2] and walls[3] and walls[4] and neighbors[6]):# or (neighbors[2] and neighbors[4] and neighbors[7] and neighbors[3]):
+                    # cursed
+                    dungeon.entities.append(Door(x, y))
 
     return dungeon, Player(px, py)
