@@ -271,7 +271,7 @@ def main(stdscr):
                     add_message(f"You speak to the `c{entity.name}`.")
                 case "attack":
                     if roll_against(player.calculate_melee_chance()):
-                        dmg = player.strength + random.randint(-1, 1)
+                        dmg = player.strength
                         if entity.has_status(Status.FROZEN):
                             # frozen entities take 1.5x damage
                             dmg = math.ceil(dmg * 1.5)
@@ -334,7 +334,9 @@ def main(stdscr):
                     if status[0] == Status.CONFUSED:
                         target.statuses[i] = (status[0], status[1] + amount)
             else:
-                target.statuses.append((Status.CONFUSED, amount))
+                txt = target.add_status(Status.CONFUSED, amount)
+                if txt:
+                    add_message(txt, 'white')
 
         def cast_cure_wounds(player, target, level, tier):
             amount = [2, 1, 4][tier]
@@ -352,31 +354,35 @@ def main(stdscr):
                     if status[0] == Status.ONFIRE:
                         target.statuses[i] = (status[0], status[1] + amount)
             else:
-                target.statuses.append((Status.ONFIRE, amount))
+                txt = target.add_status(Status.ONFIRE, amount)
+                if txt:
+                    add_message(txt, 'white')
 
         def cast_focus(player, target, level, tier):
             pass
 
         def cast_freeze(player, target, level, tier):
             amount = [3, 2, 5][tier]
+            target.health = max(0, target.health - 1)
             if target.has_status(Status.FROZEN):
                 for i, status in target.statuses:
                     if status[0] == Status.FROZEN:
                         target.statuses[i] = (status[0], status[1] + amount)
             else:
-                target.statuses.append((Status.FROZEN, amount))
-
-        def cast_magic_missile(player, target, level, tier):
-            pass
+                txt = target.add_status(Status.FROZEN, amount)
+                if txt:
+                    add_message(txt, 'white')
 
         def cast_poison(player, target, level, tier):
-            amount = [2, 1, 3][tier]
+            amount = [4, 3, 5][tier]
             if target.has_status(Status.POISONED):
                 for i, status in target.statuses:
                     if status[0] == Status.POISONED:
                         target.statuses[i] = (status[0], status[1] + amount)
             else:
-                target.statuses.append((Status.POISONED, amount))
+                txt = target.add_status(Status.POISONED, amount)
+                if txt:
+                    add_message(txt, 'white')
 
         def cast_satiate(player, target, level, tier):
             amount = [2, 1, 4][tier]
@@ -389,12 +395,15 @@ def main(stdscr):
 
         def cast_zap(player, target, level, tier):
             amount = [3, 2, 5][tier]
+            target.health = max(0, target.health - 1)
             if target.has_status(Status.SHOCKED):
                 for i, status in target.statuses:
                     if status[0] == Status.SHOCKED:
                         target.statuses[i] = (status[0], status[1] + amount)
             else:
-                target.statuses.append((Status.SHOCKED, amount))
+                txt = target.add_status(Status.SHOCKED, amount)
+                if txt:
+                    add_message(txt, 'white')
 
         def cast_none(player, target, level, tier):
             pass
@@ -408,7 +417,6 @@ def main(stdscr):
             "Flame": cast_flame,
             "Focus": cast_focus,
             "Freeze": cast_freeze,
-            "Magic Missile": cast_magic_missile,
             "Poison": cast_poison,
             "Satiate": cast_satiate,
             "Shield": cast_shield,
@@ -423,9 +431,19 @@ def main(stdscr):
                         t = player
                         add_message(f"You drink the `cPotion`, casting `m{k}` on `cyourself`!")
                     else:
+                        if isinstance(target, SpellTarget) or (isinstance(target, Door) and k in ["Flame", "Blink"]):
+                            t = target
+                            add_message(f"You cast `m{k}` on {f'the `c{t.name}`' if t != player else '`cyourself`'}!")
+                        else:
+                            t = None
+                    if t:
+                        v(player, t, level, tier)
+                    else:
                         t = target
+                        cast = True
                         add_message(f"You cast `m{k}` on {f'the `c{t.name}`' if t != player else '`cyourself`'}!")
-                    v(player, t, level, tier)
+                        add_message("Nothing happens...", 'gray')
+                        break
                     if k != "Nothingness":
                         cast = True
             if not cast:
@@ -767,12 +785,14 @@ def main(stdscr):
                         match status[0]:
                             case Status.ONFIRE:
                                 entity.health = max(0, entity.health - status[1])
-                            case Status.FROZEN:
-                                pass
-                            case Status.SHOCKED:
-                                pass
+                                if entity.health == 0:
+                                    add_message(f"The `c{entity.name}` burns to a crisp!")
+                                    entity.remove = True
                             case Status.POISONED:
                                 entity.health = max(0, entity.health - 1)
+                                if entity.health == 0:
+                                    add_message(f"The `c{entity.name}` keels over!")
+                                    entity.remove = True
                             case Status.CONFUSED:
                                 while True:
                                     n = random.choice([

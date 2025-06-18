@@ -1,35 +1,39 @@
 Hostile NPCs:
-    Bat
-    Goblin
-    Kobold
+    Bat (b)
+    Goblin (g)
+    Kobold (k)
+    Skeleton (Z)
 
 Neutral NPCs:
-    Mangled Kobold
+    Mangled Kobold (k)
 
-Head Equipment:
+Head Equipment ^:
+    Leather Helmet
 
-Body Equipment:
+Body Equipment %:
+    Leather Armor
 
-Foot Equipment:
+Foot Equipment _:
+    Leather Boots
 
-Melee Weapons:
+Melee Weapons ]:
     Iron Staff
+    Shortsword
     Wooden Staff
 
-Ranged Weapons:
+Ranged Weapons ):
     Slingshot
     Sling
     Wooden Bow
     Wooden Crossbow
 
-Ammunition:
-    Iron Arrow
-    Iron Bolt
+Ammunition *:
     Rock
     Wooden Arrow
-    Wooden Bolt
 
-Consumable Spell Items:
+Rings =:
+
+Consumable Spell Items ?, /, !:
     Scroll of [Effect]
     Scroll of Lesser [Effect]
     Scroll of Major [Effect]
@@ -40,13 +44,13 @@ Consumable Spell Items:
     Potion of Lesser [Effect]
     Potion of Major [Effect]
 
-Normal Consumable Food Items:
+Normal Consumable Food Items ":
     Banana
     Bread
     Hardtack
     Orange
 
-Magical Consumable Food Items:
+Magical Consumable Food Items ":
     Telefruit
 
 Spell Effects:
@@ -57,9 +61,7 @@ Spell Effects:
     Flame
     Focus
     Freeze
-    Magic Missile
     Poison
     Satiate
     Shield
-    Summon
     Zap

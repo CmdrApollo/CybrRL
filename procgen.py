@@ -66,6 +66,8 @@ def generate_dungeon(
     """Generate a new dungeon map."""
     dungeon = Level(map_width, map_height)
 
+    monsters = [Bat, Kobold, Goblin, Skeleton]
+
     dungeon.buffer.set_rect_filled(0, 0, map_width, map_height, '#', 'white')
 
     rooms: List[RectangularRoom] = []
@@ -95,12 +97,14 @@ def generate_dungeon(
         else:  # All rooms after the first.
             # Dig out a tunnel between this room and the previous one.
             ex, ey = new_room.center
-            if roll_against(100):
+            if roll_against(20):
                 # magical item
                 dungeon.entities.append(ItemHolder(ex + random.randint(-1, 1), ey + random.randint(-1, 1), generate_random_magical_item()))
             elif roll_against(50):
-                dungeon.entities.append(random.choice([Goblin, Kobold, Bat])(ex, ey))
-            
+                dungeon.entities.append(random.choice(monsters)(ex, ey))
+            else:
+                dungeon.entities.append(ItemHolder(ex + random.randint(-1, 1), ey + random.randint(-1, 1), generate_random_nonmagical_item()))
+
             for x, y in tunnel_between(rooms[-1].center, new_room.center):
                 dungeon.buffer._buf[y * dungeon.width + x] = ('.', 0)
 

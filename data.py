@@ -155,9 +155,22 @@ class Entity:
         self.remove = False
 
         self.statuses = []
+        self.resistances = {
+            Status.ONFIRE: False, # fire
+            Status.FROZEN: False, # ice
+            Status.SHOCKED: False, # shock
+            Status.POISONED: False, # poison
+            Status.CONFUSED: False, # confuse
+        }
 
         self.can_move = False
     
+    def add_status(self, status: str, amount: int):
+        if not self.resistances[status]:
+            self.statuses.append((status, amount))
+            return None
+        return f"The `c{self.name}` resists that status effect!"
+
     def has_status(self, s: str):
         for status in self.statuses:
             if s == status[0]:
@@ -187,6 +200,14 @@ class Door(Entity):
         super().__init__(x, y, "Door", "A simple wooden door.", '+', 'red', True, 10, 10)
         self.open = False
 
+        self.resistances = {
+            Status.ONFIRE: False, # fire
+            Status.FROZEN: True, # ice
+            Status.SHOCKED: True, # shock
+            Status.POISONED: True, # poison
+            Status.CONFUSED: True, # confuse
+        }
+
     def key_interact(self, key, player):
         if key == ord('c'):
             self.open = False
@@ -202,10 +223,9 @@ class Door(Entity):
         
         return ("dooropen", None)
 
-class Player(Entity):
-    def __init__(self, x, y):
-        super().__init__(x, y, "You", "Yourself.", '@', 'yellow', health=10, max_health=10)
-        self.strength = 2
+class SpellTarget(Entity):
+    def __init__(self, x, y, name, description, char, color, solid=True, health=1000, max_health=1000):
+        super().__init__(x, y, name, description, char, color, solid, health, max_health)
         self.magic = self.max_magic = 10
         self.capacity, self.max_capacity = 0, 16
 
@@ -220,7 +240,18 @@ class Player(Entity):
         self.ranged = 5
         self.stealth = 0
 
+        self.modifiers = []
+
         self.backpack = []
+
+        self.can_move = True
+
+        self.statuses = []
+
+class Player(SpellTarget):
+    def __init__(self, x, y):
+        super().__init__(x, y, "You", "Yourself.", '@', 'yellow', health=10, max_health=10)
+        self.strength = 2
     
         self.head_equipment = None
         self.body_equipment = None
@@ -233,8 +264,6 @@ class Player(Entity):
         self.right_hand_equipment = None
 
         self.can_move = True
-
-        self.statuses = []
 
     def calculate_melee_chance(self):
         return self.melee * 10
@@ -308,30 +337,15 @@ class Player(Entity):
         
         self.backpack.remove(item)
 
-class NPC(Entity):
+class NPC(SpellTarget):
     def __init__(self, x, y, name, description, dialogue, char, color):
         super().__init__(x, y, name, description, char, color, health=5, max_health=5)
         self.dialogue = dialogue
-
-        self.magic = self.max_magic = 10
-        self.capacity, self.max_capacity = 0, 16
-
-        self.hunger = 0
-
-        self.vision = 5
-
-        self.gold = 0
-
-        self.melee = 5
-        self.block = 0
-        self.ranged = 5
-        self.stealth = 0
-
-        self.can_move = True
-
-        self.statuses = []
     
     def on_my_turn(self, player, solids):
+        if self.has_status(Status.FROZEN) or self.has_status(Status.SHOCKED):
+            return
+        
         n = random.choice([
             (0, -1),
             (0, 1),
@@ -353,28 +367,10 @@ class MangledKobold(NPC):
     def __init__(self, x, y):
         super().__init__(x, y, "Mangled Kobold", "Before you, you see a Kobold who has been mangled by cybernetic enhancments; almost to the point of no recognition. You wonder if the poor creature is still whole beneath all of the technology that engulfs its small body. They grunt at you annoyedly.", "The kobold groans to life, machines sputtering as they do so. \"Go away,\" they tell you in a dry voice.", 'k', 'cyan')
 
-class Enemy(Entity):
+class Enemy(SpellTarget):
     def __init__(self, x, y, name, description, health, damage, char, color):
         super().__init__(x, y, name, description, char, color, True, health, health)
         self.damage = damage
-
-        self.magic = self.max_magic = 10
-        self.capacity, self.max_capacity = 0, 16
-
-        self.hunger = 0
-
-        self.vision = 5
-
-        self.gold = 0
-
-        self.melee = 5
-        self.block = 0
-        self.ranged = 5
-        self.stealth = 0
-
-        self.can_move = True
-
-        self.statuses = []
     
     def interact(self, player):
         return ("attack", None)
@@ -390,13 +386,25 @@ class Goblin(Enemy):
 class Kobold(Enemy):
     def __init__(self, x, y):
         super().__init__(x, y, "Kobold", "This small, draconic creature bears striking resemblence to the dragons of the days of yore. Or so you've been told.", 5, 2, 'k', 'red')
-    
+
 class Bat(Enemy):
     def __init__(self, x, y):
         super().__init__(x, y, "Bat", "This blood-sucking creature flies silently throughout the dungeon, awaiting its next victim.", 4, 1, 'b', 'magenta')
 
+class Skeleton(Enemy):
+    def __init__(self, x, y):
+        super().__init__(x, y, "Skeleton", "This undead creature roams the halls of the dungeon searching for revenge.", 6, 3, 'Z', 'white')
+
+        self.resistances = {
+            Status.ONFIRE: False, # fire
+            Status.FROZEN: False, # ice
+            Status.SHOCKED: False, # shock
+            Status.POISONED: True, # poison
+            Status.CONFUSED: False, # confuse
+        }
+
 class ItemHolder(Entity):
-    def __init__(self, x, y, item: MagicalConsumibleItem):
+    def __init__(self, x, y, item: Item):
         super().__init__(x, y, item.name, item.description, item.char, item.color, False, 10, 10)
         self.item = item
 

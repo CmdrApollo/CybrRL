@@ -7,11 +7,10 @@ class SpellEffects:
     FLAME = 5
     FOCUS = 6
     FREEZE = 7
-    MAGICMISSILE = 8
-    POISON = 9
-    SATIATE = 10
-    SHIELD = 11
-    ZAP = 12
+    POISON = 8
+    SATIATE = 9
+    SHIELD = 10
+    ZAP = 11
 
 class SpellIntensity:
     NORMAL = 0
