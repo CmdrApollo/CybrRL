@@ -65,3 +65,7 @@ Spell Effects:
     Satiate
     Shield
     Zap
+
+Today's Todos:
+ (x) animations !
+ ( ) integrate more animations

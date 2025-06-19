@@ -116,7 +116,7 @@ class Buffer:
                     'blue': colors.BLUE,
                     'yellow': colors.YELLOW,
                     'cyan': colors.CYAN,
-                    'magenta': colors.MAGNETA,
+                    'magenta': colors.MAGENTA,
                     'gray': colors.GRAY,
                 }[c[1]])
 

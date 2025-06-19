@@ -49,6 +49,9 @@ class Point:
         self.x = x
         self.y = y
 
+def lerp(a, b, t):
+    return a + (b - a) * t
+
 def main(stdscr):
     level_size = (64, 23)
 
@@ -77,7 +80,7 @@ def main(stdscr):
         BLUE = curses.color_pair(3)
         YELLOW = curses.color_pair(4)
         CYAN = curses.color_pair(5)
-        MAGNETA = curses.color_pair(6)
+        MAGENTA = curses.color_pair(6)
         GRAY = curses.color_pair(7) if curses.can_change_color() and curses.COLORS > 0xff else curses.color_pair(3)
 
     def split_up(text, size_x=width, size_y=height):
@@ -138,7 +141,7 @@ def main(stdscr):
         titles = ["Menu", "Choices", "", "", ""]
 
         while True:
-            elapsed_ticks = int(time.time() * 4) - start_ticks
+            elapsed_ticks = int(time.time() * 8) - start_ticks
             
             stdscr.clear()
             screen.clear()
@@ -186,7 +189,7 @@ def main(stdscr):
 
             # Get user input
             key = stdscr.getch()
-            
+
             if key == ord('\n'):
                 match choice:
                     case 0:
@@ -324,6 +327,18 @@ def main(stdscr):
             if (tx, ty) == (target.x, target.y):
                 add_message(f"There is nowhere for them to blink to!", 'white')
             else:
+                animation_queue.append(
+                [
+                    Animation('x', Colors.GRAY, target.x, target.y, tx, ty, 0, duration=10)
+                ])
+                animation_queue.append(
+                [
+                    Animation('!', Colors.GRAY, tx, ty, tx - 1, ty - 1, duration=1),
+                    Animation('!', Colors.GRAY, tx, ty, tx - 1, ty + 1, duration=1),
+                    Animation('!', Colors.GRAY, tx, ty, tx + 1, ty - 1, duration=1),
+                    Animation('!', Colors.GRAY, tx, ty, tx + 1, ty + 1, duration=1)
+                ])
+
                 target.x, target.y = tx, ty
                 add_message(f"They blink `g{d}` tiles!", 'white')
 
@@ -337,12 +352,27 @@ def main(stdscr):
                 txt = target.add_status(Status.CONFUSED, amount)
                 if txt:
                     add_message(txt, 'white')
+                else:
+                    animation_queue.append(
+                    [
+                        Animation('!', Colors.MAGENTA, target.x, target.y, target.x - 1, target.y - 1, duration=1),
+                        Animation('!', Colors.MAGENTA, target.x, target.y, target.x - 1, target.y + 1, duration=1),
+                        Animation('!', Colors.MAGENTA, target.x, target.y, target.x + 1, target.y - 1, duration=1),
+                        Animation('!', Colors.MAGENTA, target.x, target.y, target.x + 1, target.y + 1, duration=1)
+                    ])
 
         def cast_cure_wounds(player, target, level, tier):
             amount = [2, 1, 4][tier]
             new_health = min(target.max_health, target.health + amount)
             add_message(f"You restore `g{new_health - target.health}` of their `aHp`.")
             target.health = new_health
+            animation_queue.append(
+            [
+                Animation('+', Colors.GREEN, target.x, target.y, target.x - 1, target.y - 1, duration=1),
+                Animation('+', Colors.GREEN, target.x, target.y, target.x - 1, target.y + 1, duration=1),
+                Animation('+', Colors.GREEN, target.x, target.y, target.x + 1, target.y - 1, duration=1),
+                Animation('+', Colors.GREEN, target.x, target.y, target.x + 1, target.y + 1, duration=1)
+            ])
 
         def cast_endurance(player, target, level, tier):
             pass
@@ -357,6 +387,14 @@ def main(stdscr):
                 txt = target.add_status(Status.ONFIRE, amount)
                 if txt:
                     add_message(txt, 'white')
+                else:
+                    animation_queue.append(
+                    [
+                        Animation('!', Colors.RED, target.x, target.y, target.x - 1, target.y - 1, duration=1),
+                        Animation('!', Colors.RED, target.x, target.y, target.x - 1, target.y + 1, duration=1),
+                        Animation('!', Colors.RED, target.x, target.y, target.x + 1, target.y - 1, duration=1),
+                        Animation('!', Colors.RED, target.x, target.y, target.x + 1, target.y + 1, duration=1)
+                    ])
 
         def cast_focus(player, target, level, tier):
             pass
@@ -372,6 +410,14 @@ def main(stdscr):
                 txt = target.add_status(Status.FROZEN, amount)
                 if txt:
                     add_message(txt, 'white')
+                else:
+                    animation_queue.append(
+                    [
+                        Animation('!', Colors.CYAN, target.x, target.y, target.x - 1, target.y - 1, duration=1),
+                        Animation('!', Colors.CYAN, target.x, target.y, target.x - 1, target.y + 1, duration=1),
+                        Animation('!', Colors.CYAN, target.x, target.y, target.x + 1, target.y - 1, duration=1),
+                        Animation('!', Colors.CYAN, target.x, target.y, target.x + 1, target.y + 1, duration=1)
+                    ])
 
         def cast_poison(player, target, level, tier):
             amount = [4, 3, 5][tier]
@@ -383,12 +429,27 @@ def main(stdscr):
                 txt = target.add_status(Status.POISONED, amount)
                 if txt:
                     add_message(txt, 'white')
+                else:
+                    animation_queue.append(
+                    [
+                        Animation('!', Colors.GREEN, target.x, target.y, target.x - 1, target.y - 1, duration=1),
+                        Animation('!', Colors.GREEN, target.x, target.y, target.x - 1, target.y + 1, duration=1),
+                        Animation('!', Colors.GREEN, target.x, target.y, target.x + 1, target.y - 1, duration=1),
+                        Animation('!', Colors.GREEN, target.x, target.y, target.x + 1, target.y + 1, duration=1)
+                    ])
 
         def cast_satiate(player, target, level, tier):
             amount = [2, 1, 4][tier]
             new_hunger = max(0, target.hunger - amount)
             add_message(f"You satiate `g{target.hunger - new_hunger}` of their `aHg`.")
             target.hunger = new_hunger
+            animation_queue.append(
+            [
+                Animation('+', Colors.RED, target.x, target.y, target.x - 1, target.y - 1, duration=1),
+                Animation('+', Colors.RED, target.x, target.y, target.x - 1, target.y + 1, duration=1),
+                Animation('+', Colors.RED, target.x, target.y, target.x + 1, target.y - 1, duration=1),
+                Animation('+', Colors.RED, target.x, target.y, target.x + 1, target.y + 1, duration=1)
+            ])
 
         def cast_shield(player, target, level, tier):
             pass
@@ -404,6 +465,14 @@ def main(stdscr):
                 txt = target.add_status(Status.SHOCKED, amount)
                 if txt:
                     add_message(txt, 'white')
+                else:
+                    animation_queue.append(
+                    [
+                        Animation('!', Colors.YELLOW, target.x, target.y, target.x - 1, target.y - 1, duration=1),
+                        Animation('!', Colors.YELLOW, target.x, target.y, target.x - 1, target.y + 1, duration=1),
+                        Animation('!', Colors.YELLOW, target.x, target.y, target.x + 1, target.y - 1, duration=1),
+                        Animation('!', Colors.YELLOW, target.x, target.y, target.x + 1, target.y + 1, duration=1)
+                    ])
 
         def cast_none(player, target, level, tier):
             pass
@@ -449,8 +518,50 @@ def main(stdscr):
             if not cast:
                 add_message("Nothing happens...", 'gray')
 
+        class Animation:
+            def __init__(self, char, color, start_x, start_y, target_x, target_y, ticks=None, duration=10):
+                self.char = char
+                self.color = color
+                self.x = start_x
+                self.y = start_y
+                self.start_x = start_x
+                self.start_y = start_y
+                self.target_x = target_x
+                self.target_y = target_y
+                self.start_time = ticks
+                self.duration = duration
+                self.finished = False
+
+            def draw(self, s):
+                if not self.finished:
+                    s.set_at(self.x - cam_x, self.y - cam_y, self.char, self.color)
+
+            def update(self, ticks):
+                if self.start_time is None:
+                    self.start_time = ticks
+
+                if not self.finished:
+                    elapsed = ticks - self.start_time
+                    if elapsed > self.duration:
+                        self.finished = True
+                    else:
+                        progress = elapsed / self.duration
+                        self.x = round(lerp(self.start_x, self.target_x, progress))
+                        self.y = round(lerp(self.start_y, self.target_y, progress))
+
+        animation_queue = []
+
         while True:
-            elapsed_ticks = int(time.time() * 4) - start_ticks
+            elapsed_ticks = int(time.time() * 8) - start_ticks
+
+            if len(animation_queue):
+                for i, animation in enumerate(animation_queue[0]):
+                    if animation.finished:
+                        animation_queue[0].pop(i)
+                        if len(animation_queue[0]) == 0:
+                            animation_queue.pop(0)
+                    else:
+                        animation.update(elapsed_ticks)
 
             generate_solids()
             fov = tcod.map.compute_fov(solids, (player.y, player.x), player.vision, algorithm=tcod.constants.FOV_DIAMOND)
@@ -516,7 +627,6 @@ def main(stdscr):
                 f"{"> " if equipping and item_to_equip and gear_choice == 6 else "  "}hand: {player.right_hand_equipment.name if player.right_hand_equipment else "none"}"
             ]), Colors.WHITE)
 
-
             if not menu:
                 game_screen.blit_level(active_visibility, level, -cam_x, -cam_y, Colors.GRAY)
 
@@ -537,6 +647,13 @@ def main(stdscr):
                 for i, item in enumerate(player.backpack):
                     text = ("> " if i == inventory_choice and (identifying or using or equipping) else "  ") + item.name + (f'<`g{item.charges}`>' if isinstance(item, Wand) else '') + (f' [`g{item.id_cost}` Mp]' if not item.identified else '')
                     screen.set_text(gameplay_width + 1, 1 + i, text, Colors.YELLOW if i == inventory_choice and (identifying or using or equipping) else Colors.WHITE)
+
+                if len(animation_queue):
+                    for i, animation in enumerate(animation_queue[0]):
+                        animation.draw(game_screen)
+
+                        if i == 0:
+                            game_screen.set_text(0, 0, f"x: {animation.x}, y: {animation.y}", 'white')
             else:
                 t = "\n".join([
                     "   ***********************************   ",
@@ -563,6 +680,9 @@ def main(stdscr):
             screen.put(stdscr, 1, 1, Colors)
 
             stdscr.refresh()
+
+            if len(animation_queue):
+                continue
 
             # Get user input
             key = stdscr.getch()
@@ -858,13 +978,16 @@ def main(stdscr):
                 cursor.x = examining_entity.x
                 cursor.y = examining_entity.y
 
-    start_ticks = int(time.time() * 4)
+    start_ticks = int(time.time() * 8)
 
     while True:
-        if not main_menu(start_ticks):
+        try:
+            if not main_menu(start_ticks):
+                break
+            main_game(start_ticks)
+        except KeyboardInterrupt:
             break
-        main_game(start_ticks)
-    
+
     print("Thank you for playing Aether Collapse!")
 
 if __name__ == '__main__':

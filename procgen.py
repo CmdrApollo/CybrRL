@@ -97,9 +97,9 @@ def generate_dungeon(
         else:  # All rooms after the first.
             # Dig out a tunnel between this room and the previous one.
             ex, ey = new_room.center
-            if roll_against(20):
+            if roll_against(80):
                 # magical item
-                dungeon.entities.append(ItemHolder(ex + random.randint(-1, 1), ey + random.randint(-1, 1), generate_random_magical_item()))
+                dungeon.entities.append(ItemHolder(ex + random.randint(-1, 1), ey + random.randint(-1, 1), Wand(4, SpellEffects.BLINK, 2)))#generate_random_magical_item()))
             elif roll_against(50):
                 dungeon.entities.append(random.choice(monsters)(ex, ey))
             else:
