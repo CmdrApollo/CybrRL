@@ -1,3 +1,3 @@
 @echo off
 
-pyinstaller --onefile --console --name "Aether Collapse" main.py
+pyinstaller --onefile --clean --upx-dir=upx/ --exclude-module=tkinter --exclude-module=test --exclude-module=pydoc --name="Aether Collapse" main.py

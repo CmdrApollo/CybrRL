@@ -330,7 +330,7 @@ def main(stdscr):
         def cast_confuse(player, target, level, tier):
             amount = [3, 2, 5][tier]
             if target.has_status(Status.CONFUSED):
-                for i, status in target.statuses:
+                for i, status in enumerate(target.statuses):
                     if status[0] == Status.CONFUSED:
                         target.statuses[i] = (status[0], status[1] + amount)
             else:
@@ -350,7 +350,7 @@ def main(stdscr):
         def cast_flame(player, target, level, tier):
             amount = [2, 1, 3][tier]
             if target.has_status(Status.ONFIRE):
-                for i, status in target.statuses:
+                for i, status in enumerate(target.statuses):
                     if status[0] == Status.ONFIRE:
                         target.statuses[i] = (status[0], status[1] + amount)
             else:
@@ -365,7 +365,7 @@ def main(stdscr):
             amount = [3, 2, 5][tier]
             target.health = max(0, target.health - 1)
             if target.has_status(Status.FROZEN):
-                for i, status in target.statuses:
+                for i, status in enumerate(target.statuses):
                     if status[0] == Status.FROZEN:
                         target.statuses[i] = (status[0], status[1] + amount)
             else:
@@ -376,7 +376,7 @@ def main(stdscr):
         def cast_poison(player, target, level, tier):
             amount = [4, 3, 5][tier]
             if target.has_status(Status.POISONED):
-                for i, status in target.statuses:
+                for i, status in enumerate(target.statuses):
                     if status[0] == Status.POISONED:
                         target.statuses[i] = (status[0], status[1] + amount)
             else:
@@ -397,7 +397,7 @@ def main(stdscr):
             amount = [3, 2, 5][tier]
             target.health = max(0, target.health - 1)
             if target.has_status(Status.SHOCKED):
-                for i, status in target.statuses:
+                for i, status in enumerate(target.statuses):
                     if status[0] == Status.SHOCKED:
                         target.statuses[i] = (status[0], status[1] + amount)
             else:
