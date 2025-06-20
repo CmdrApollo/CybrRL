@@ -174,7 +174,7 @@ def main(stdscr):
                 "   ***********************************   ",
             ])
             tx, ty = game_screen.width // 2 - len(t.splitlines()[0]) // 2, game_screen.height // 2 - len(t.splitlines()) // 2
-            game_screen.set_text(tx, ty, t, Colors.CYAN if elapsed_ticks & 4 else Colors.BLUE)
+            game_screen.set_text(tx, ty, t, Colors.CYAN if elapsed_ticks & 8 else Colors.BLUE)
 
             screen.blit(game_screen, 1, 1)
 
@@ -663,7 +663,7 @@ def main(stdscr):
                     "   ***********************************   ",
                 ])
                 tx, ty = game_screen.width // 2 - len(t.splitlines()[0]) // 2, game_screen.height // 2 - len(t.splitlines()) // 2
-                game_screen.set_text(tx, ty, t, Colors.CYAN if int(time.time()) & 1 else Colors.BLUE)
+                game_screen.set_text(tx, ty, t, Colors.CYAN if elapsed_ticks & 8 else Colors.BLUE)
 
                 for i, option in enumerate(menu_options):
                     text = ("> " if i == menu_choice else "  ") + option
@@ -721,6 +721,7 @@ def main(stdscr):
                                 examining_entity = None
                                 if isinstance(item, Wand):
                                     # wands are multi-use
+                                    item.identify()
                                     item.charges -= 1
                                     if item.charges < 1:
                                         player.take_away(item)
