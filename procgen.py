@@ -99,11 +99,15 @@ def generate_dungeon(
             ex, ey = new_room.center
             if roll_against(20):
                 # magical item
-                dungeon.entities.append(ItemHolder(ex + random.randint(-1, 1), ey + random.randint(-1, 1), generate_random_magical_item()))
+                dungeon.entities.append(ItemHolder(ex + random.randint(-1, 1), ey + random.randint(-1, 1), Wand(3, SpellEffects.SHIELD, 0)))#generate_random_magical_item()))
             elif roll_against(50):
                 dungeon.entities.append(random.choice(monsters)(ex, ey))
             else:
-                dungeon.entities.append(ItemHolder(ex + random.randint(-1, 1), ey + random.randint(-1, 1), generate_random_nonmagical_item()))
+                if random.random() < 0.3:
+                    # gold
+                    dungeon.entities.append(GoldPickup(ex + random.randint(-1, 1), ey + random.randint(-1, 1), random.randint(4, 25)))
+                else:
+                    dungeon.entities.append(ItemHolder(ex + random.randint(-1, 1), ey + random.randint(-1, 1), generate_random_nonmagical_item()))
 
             for x, y in tunnel_between(rooms[-1].center, new_room.center):
                 dungeon.buffer._buf[y * dungeon.width + x] = ('.', 0)
@@ -111,6 +115,12 @@ def generate_dungeon(
         # Finally, append the new room to the list.
         rooms.append(new_room)
     
+    ex, ey = rooms[-1].center
+    ex += random.randint(-1, 1)
+    ey += random.randint(-1, 1)
+
+    dungeon.entities.append(FloorExit(ex, ey))
+
     for x in range(dungeon.width):
         for y in range(dungeon.height):
             if dungeon.buffer.get(x, y)[0] == '.':

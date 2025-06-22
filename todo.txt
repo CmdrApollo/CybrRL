@@ -67,5 +67,13 @@ Spell Effects:
     Zap
 
 Today's Todos:
- (x) animations !
- (x) integrate more animations
+    Enemy AI (x)
+    Multiple Floors (x)
+    Better Time System (x)
+    Modifiers (x)
+    Make Modifiers go Away ( )
+    Enemies Only Path at Certain Distance (x)
+    Better Balance (x)
+    Better Procgen (-)
+    Win/Lose Conditions ( )
+    Make the Pause Menu do Something ( )

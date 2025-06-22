@@ -1,6 +1,10 @@
 import random
 from items import *
 
+import tcod.path
+
+import numpy as np
+
 class Status:
     ONFIRE = "fire"
     FROZEN = "ice"
@@ -139,7 +143,15 @@ class Level:
                             self.buffer.set_at(x, y, '#', color)
                             break
 
+class Speed:
+    VERY_SLOW = 8
+    SLOW = 4
+    NORMAL = 2
+    FAST = 1
+
 class Entity:
+    speed = Speed.NORMAL
+
     def __init__(self, x, y, name, description, char, color, solid=True, health=1000, max_health=1000):
         self.x = x
         self.y = y
@@ -164,6 +176,8 @@ class Entity:
         }
 
         self.can_move = False
+
+        self.time = 0
     
     def add_status(self, status: str, amount: int):
         if not self.resistances[status]:
@@ -248,34 +262,49 @@ class SpellTarget(Entity):
 
         self.statuses = []
 
-class Player(SpellTarget):
-    def __init__(self, x, y):
-        super().__init__(x, y, "You", "Yourself.", '@', 'yellow', health=10, max_health=10)
-        self.strength = 2
-    
-        self.head_equipment = None
-        self.body_equipment = None
-        self.foot_equipment = None
+    def add_modifier(self, modifier, amount, time=-1):
+        self.modifiers.append([modifier, amount, time])
+        if modifier == "health":
+            self.health = min(self.max_health + self.get_modifier("health"), self.health + amount)
 
-        self.left_ring = None
-        self.left_hand_equipment = None
-        self.right_ring = None
+    def update_modifiers(self):
+        for modifier in self.modifiers[::-1]:
+            if modifier[2] > 0:
+                modifier[2] -= 1
 
-        self.right_hand_equipment = None
+            if modifier[2] == 0:
+                self.remove_modifier(modifier)
+        
+        if self.health <= 0:
+            self.remove = True
 
-        self.can_move = True
+    def remove_modifier(self, name):
+        for modifier in self.modifiers[::-1]:
+            if modifier[0] == name:
+                if name == "health":
+                    self.health = max(0, self.health - modifier[1])
+                self.modifiers.remove(modifier)
+                return True
+        return False
+
+    def get_modifier(self, name):
+        value = 0
+        for modifier in self.modifiers:
+            if modifier[0] == name:
+                value += modifier[1]
+        return value
 
     def calculate_melee_chance(self):
-        return self.melee * 10
+        return (self.melee + self.get_modifier("melee")) * 10
 
     def calculate_block_chance(self):
-        return self.block * 10
+        return (self.block + self.get_modifier("block")) * 10
 
     def calculate_ranged_chance(self):
-        return self.ranged * 10
+        return (self.ranged + self.get_modifier("ranged")) * 10
 
     def calculate_stealth_chance(self):
-        return self.stealth * 10
+        return (self.stealth + self.get_modifier("stealth")) * 10
 
     def give(self, item):
         if self.capacity < self.max_capacity:
@@ -287,6 +316,20 @@ class Player(SpellTarget):
     def take_away(self, item):
         self.backpack.remove(item)
         self.capacity -= 1
+
+class Player(SpellTarget):
+    def __init__(self, x, y):
+        super().__init__(x, y, "You", "Yourself.", '@', 'yellow', health=10, max_health=10)
+        self.strength = 2
+    
+        self.head_equipment = None
+        self.body_equipment = None
+        self.foot_equipment = None
+
+        self.ring = None
+        self.hand_equipment = None
+
+        self.can_move = True
 
     def put_gear_in_slot(self, item, slot):
         fail_message = "You can't equip that item in that slot."
@@ -314,26 +357,15 @@ class Player(SpellTarget):
                     return fail_message
             case 3:
                 if isinstance(item, Ring):
-                    if self.left_ring:
-                        self.backpack.append(self.left_ring)
-                    self.left_ring = item
+                    if self.ring:
+                        self.backpack.append(self.ring)
+                    self.ring = item
                 else:
                     return fail_message
             case 4:
-                if self.left_hand_equipment:
-                    self.backpack.append(self.left_hand_equipment)
-                self.left_hand_equipment = item
-            case 5:
-                if isinstance(item, Ring):
-                    if self.right_ring:
-                        self.backpack.append(self.right_ring)
-                    self.right_ring = item
-                else:
-                    return fail_message
-            case 6:
-                if self.right_hand_equipment:
-                    self.backpack.append(self.right_hand_equipment)
-                self.right_hand_equipment = item
+                if self.hand_equipment:
+                    self.backpack.append(self.hand_equipment)
+                self.hand_equipment = item
         
         self.backpack.remove(item)
 
@@ -368,10 +400,44 @@ class MangledKobold(NPC):
         super().__init__(x, y, "Mangled Kobold", "Before you, you see a Kobold who has been mangled by cybernetic enhancments; almost to the point of no recognition. You wonder if the poor creature is still whole beneath all of the technology that engulfs its small body. They grunt at you annoyedly.", "The kobold groans to life, machines sputtering as they do so. \"Go away,\" they tell you in a dry voice.", 'k', 'cyan')
 
 class Enemy(SpellTarget):
-    def __init__(self, x, y, name, description, health, damage, char, color):
+    def __init__(self, x, y, name, description, health, damage, char, color, pathing_distance=8):
         super().__init__(x, y, name, description, char, color, True, health, health)
         self.damage = damage
+        self.pathing_distance = pathing_distance
     
+    def on_my_turn(self, player, solids):
+        if abs(player.x - self.x) + abs(player.y - self.y) == 1:
+            # adjacent to player
+            # attack!!!
+            if roll_against(self.calculate_melee_chance()):
+                if roll_against(player.calculate_block_chance()):
+                    return f"You blocked the attack from the `c{self.name}`!"
+                
+                player.health = max(0, player.health - self.damage)
+                return f"You were hit by the `c{self.name}` for `r{self.damage}` damage!"
+            return f"The `c{self.name}` missed you!"
+        
+        solids = np.transpose(solids, (1, 0))
+
+        graph = tcod.path.SimpleGraph(cost=solids, cardinal=1, diagonal=0)
+
+        finder = tcod.path.Pathfinder(graph)
+
+        finder.add_root((self.x, self.y))
+
+        path = finder.path_to((player.x, player.y))
+
+        try:
+            path = path.tolist()[1:-1]
+
+            if len(path) > self.pathing_distance:
+                return
+
+            self.x = path[0][0]
+            self.y = path[0][1]
+        except IndexError:
+            pass
+
     def interact(self, player):
         return ("attack", None)
     
@@ -380,20 +446,25 @@ class HumanoidEnemy(Enemy):
         super().__init__(x, y, name, description, health, damage, '@', color)
     
 class Goblin(Enemy):
+    speed = Speed.SLOW
     def __init__(self, x, y):
-        super().__init__(x, y, "Goblin", "A medium-sized, green, humanoid creature. Generally known for their hostility and shady business tactics.", 6, 2, 'g', 'green')
+        super().__init__(x, y, "Goblin", "A medium-sized, green, humanoid creature. Generally known for their hostility and shady business tactics.", 6, 1, 'g', 'green')
         
 class Kobold(Enemy):
+    speed = Speed.SLOW
     def __init__(self, x, y):
-        super().__init__(x, y, "Kobold", "This small, draconic creature bears striking resemblence to the dragons of the days of yore. Or so you've been told.", 5, 2, 'k', 'red')
+        super().__init__(x, y, "Kobold", "This small, draconic creature bears striking resemblence to the dragons of the days of yore. Or so you've been told.", 5, 1, 'k', 'red')
 
 class Bat(Enemy):
+    speed = Speed.SLOW
     def __init__(self, x, y):
         super().__init__(x, y, "Bat", "This blood-sucking creature flies silently throughout the dungeon, awaiting its next victim.", 4, 1, 'b', 'magenta')
 
 class Skeleton(Enemy):
+    speed = Speed.VERY_SLOW
+
     def __init__(self, x, y):
-        super().__init__(x, y, "Skeleton", "This undead creature roams the halls of the dungeon searching for revenge.", 6, 3, 'Z', 'white')
+        super().__init__(x, y, "Skeleton", "This undead creature roams the halls of the dungeon searching for revenge.", 6, 2, 'Z', 'white')
 
         self.resistances = {
             Status.ONFIRE: False, # fire
@@ -426,6 +497,15 @@ class GoldPickup(Entity):
             player.gold += self.amount
             self.remove = True
             return ("goldpickup", None)
+        return ("none", None)
+
+class FloorExit(Entity):
+    def __init__(self, x, y, health=float('inf'), max_health=float('inf')):
+        super().__init__(x, y, "Stairs Down", "Stairs that lead downwards, further into the depths of the dungeon.", '>', 'white', False, health, max_health)
+
+    def direct_key_interact(self, key, player):
+        if key == ord('>'):
+            return ("exit", None)
         return ("none", None)
 
 def roll_against(x: int) -> bool:

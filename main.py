@@ -1,6 +1,5 @@
 import curses
 
-import tcod.path
 import tcod.map
 import tcod.constants
 
@@ -71,7 +70,7 @@ def main(stdscr):
     curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK )
     curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK   )
     curses.init_pair(6, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
-    curses.init_pair(7, 244, curses.COLOR_BLACK)
+    curses.init_pair(7, 244, curses.COLOR_BLACK) # medium gray
 
     class Colors:
         WHITE = curses.color_pair(0)
@@ -205,7 +204,7 @@ def main(stdscr):
         game_screen = Buffer(gameplay_width - 2, gameplay_height - attributes_size - 2)
 
         level, player = generate_dungeon(
-            15, 4, 6, *level_size
+            20, 4, 6, *level_size
         )
 
         active_visibility = level.visibility.copy()
@@ -213,21 +212,23 @@ def main(stdscr):
         solids = None
         empty_solids = None
 
-        titles = ["Floor 1", "Backpack", "Stats", "Messages", "Gear"]
+        floor = 1
+
+        titles = [f"Floor {floor}", "Backpack", "Stats", "Messages", "Gear"]
 
         def generate_solids():
             nonlocal solids
             nonlocal empty_solids
 
             # used for pathfinding and fov
-            solids = np.array([[ 1 for _ in range(level.width) ] for _ in range(level.height)])
+            solids = np.array([[ True for _ in range(level.width) ] for _ in range(level.height)])
 
             empty_solids = solids.copy()
 
             for x in range(level.width):
                 for y in range(level.height):
                     if level.buffer.get(x, y)[0] == '#' or any([e.solid and e.x == x and e.y == y for e in level.entities]):
-                        solids[y, x] = 0
+                        solids[y, x] = False
 
         cam_x = 0#player.x - gameplay_width // 2
         cam_y = 0#player.y - (gameplay_height - attributes_size) // 2
@@ -260,7 +261,7 @@ def main(stdscr):
         replace_player = False
 
         def interact_with(entity, interaction_type, interaction_data):
-            nonlocal show_text, title, contents, replace_player
+            nonlocal show_text, title, contents, replace_player, level, active_visibility, floor
             match interaction_type:
                 case "description":
                     show_text = True
@@ -274,6 +275,10 @@ def main(stdscr):
                     add_message(f"You speak to the `c{entity.name}`.")
                 case "attack":
                     if roll_against(player.calculate_melee_chance()):
+                        if roll_against(entity.calculate_block_chance()):
+                            add_message(f"The `c{entity.name}` blocks your attack!")
+                            return True
+                        
                         dmg = player.strength
                         if entity.has_status(Status.FROZEN):
                             # frozen entities take 1.5x damage
@@ -292,6 +297,23 @@ def main(stdscr):
                     entity.x, entity.y = tx, ty
                     replace_player = False
                     add_message(f"You swap places with the `c{entity.name}`.")
+                case "exit":
+                    add_message("You descend deeper into the dungeon.")
+
+                    floor += 1
+
+                    titles[0] = f"Floor {floor}"
+
+                    level, new_player = generate_dungeon(
+                        20, 4, 6, *level_size
+                    )
+
+                    active_visibility = level.visibility.copy()
+
+                    player.x = new_player.x
+                    player.y = new_player.y
+
+                    generate_solids()
                 case "pickup":
                     add_message(f"You pick up the `c{entity.item.name}`.")
                 case "goldpickup":
@@ -329,7 +351,7 @@ def main(stdscr):
             else:
                 animation_queue.append(
                 [
-                    Animation('x', Colors.GRAY, target.x, target.y, tx, ty, 0, duration=10)
+                    Animation('x', Colors.GRAY, target.x, target.y, tx, ty, duration=5)
                 ])
                 animation_queue.append(
                 [
@@ -452,7 +474,16 @@ def main(stdscr):
             ])
 
         def cast_shield(player, target, level, tier):
-            pass
+            amount = [2, 1, 3][tier]
+            time =   [3, 2, 4][tier]
+            target.add_modifier("block", amount, time)
+            animation_queue.append(
+            [
+                Animation('+', Colors.CYAN, target.x, target.y, target.x - 1, target.y - 1, duration=1),
+                Animation('+', Colors.CYAN, target.x, target.y, target.x - 1, target.y + 1, duration=1),
+                Animation('+', Colors.CYAN, target.x, target.y, target.x + 1, target.y - 1, duration=1),
+                Animation('+', Colors.CYAN, target.x, target.y, target.x + 1, target.y + 1, duration=1)
+            ])
 
         def cast_zap(player, target, level, tier):
             amount = [3, 2, 5][tier]
@@ -592,7 +623,7 @@ def main(stdscr):
                 1,
                 ay,
                 "\n".join([
-                    f"`aHp`: `g{player.health}`/`g{player.max_health}` `aMp`: `g{player.magic}`/`g{player.max_magic}` `aHg`: `g{player.hunger}` `aCap`: `g{player.capacity}`/`g{player.max_capacity}` `yGold`: `g{player.gold}` `yVision`: `g{player.vision}`",
+                    f"`aHp`: `g{player.health}`/`g{player.max_health + player.get_modifier("health")}` `aMp`: `g{player.magic}`/`g{player.max_magic}` `aHg`: `g{player.hunger}` `aCap`: `g{player.capacity}`/`g{player.max_capacity}` `yGold`: `g{player.gold}` `yVision`: `g{player.vision}`",
                     f"`aMelee`: `g{player.calculate_melee_chance()}%` `aBlock`: `g{player.calculate_block_chance()}%` `aRanged`: `g{player.calculate_ranged_chance()}%` `aStealth`: `g{player.calculate_stealth_chance()}%`",
                     " ".join(f"{status_texts[s[0]]}<`g{s[1]}`>" for s in sorted(player.statuses))
                 ]),
@@ -621,10 +652,8 @@ def main(stdscr):
                 f"{"> " if equipping and item_to_equip and gear_choice == 1 else "  "}body: {player.body_equipment.name if player.body_equipment else "none"}",
                 f"{"> " if equipping and item_to_equip and gear_choice == 2 else "  "}feet: {player.foot_equipment.name if player.foot_equipment else "none"}",
                 "",
-                f"{"> " if equipping and item_to_equip and gear_choice == 3 else "  "}ring: {player.left_ring.name if player.left_ring else "none"}",
-                f"{"> " if equipping and item_to_equip and gear_choice == 4 else "  "}hand: {player.left_hand_equipment.name if player.left_hand_equipment else "none"}",
-                f"{"> " if equipping and item_to_equip and gear_choice == 5 else "  "}ring: {player.right_ring.name if player.right_ring else "none"}",
-                f"{"> " if equipping and item_to_equip and gear_choice == 6 else "  "}hand: {player.right_hand_equipment.name if player.right_hand_equipment else "none"}"
+                f"{"> " if equipping and item_to_equip and gear_choice == 3 else "  "}ring: {player.ring.name if player.ring else "none"}",
+                f"{"> " if equipping and item_to_equip and gear_choice == 4 else "  "}hand: {player.hand_equipment.name if player.hand_equipment else "none"}",
             ]), Colors.WHITE)
 
             if not menu:
@@ -739,9 +768,9 @@ def main(stdscr):
                     if equipping:
                         if key == curses.KEY_UP:
                             gear_choice -= 1
-                            if gear_choice < 0: gear_choice += 7
+                            if gear_choice < 0: gear_choice += 5
                         elif key == curses.KEY_DOWN:
-                            gear_choice = (gear_choice + 1) % 7
+                            gear_choice = (gear_choice + 1) % 5
                         elif key == ord('\n'):
                             msg = player.put_gear_in_slot(item_to_equip, gear_choice)
                             if msg:
@@ -899,8 +928,23 @@ def main(stdscr):
                         titles = old_titles
 
             if entities_can_go:
+                player.update_modifiers()
+
                 for entity in level.entities[::-1]:
-                    entity.on_my_turn(player, solids)
+                    entity.time += player.speed
+                    
+                    while entity.time >= entity.speed:
+                        entity.time -= entity.speed
+
+                        if not (entity.has_status(Status.FROZEN) or entity.has_status(Status.SHOCKED) or entity.has_status(Status.CONFUSED)):
+                            text = entity.on_my_turn(player, solids)
+                            if text:
+                                add_message(text, 'white')
+
+                # status effects apply every time the player moves            
+                for entity in level.entities[::-1]:
+                    if isinstance(entity, SpellTarget):
+                        entity.update_modifiers()
 
                     for i, status in enumerate(entity.statuses):
                         match status[0]:
@@ -939,7 +983,7 @@ def main(stdscr):
                     
                     if entity.remove:
                         level.entities.remove(entity)
-                
+
                 # after all entities have gone (at beginning of player's next turn),
                 # apply all status effects
                 for i, status in enumerate(player.statuses):
